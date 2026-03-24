@@ -2950,10 +2950,6 @@ function buildWeatherAssist(wmo,maxT,minT,rain,wind,hpa,curTemp){
   const windKmh = wind || 0;
   const bikeFeels = Math.round(curTemp - (windKmh + 30) * 0.3);
 
-  // 原付危険度
-  const risk = calcBikeRisk(curTemp, windKmh, hpa, rain, wmo);
-  const { levelInfo, risks } = risk;
-
   // トップス判定（原付体感温度基準）
   let tops = '';
   if(bikeFeels >= 28)      tops = '半袖Tシャツ';
@@ -2986,24 +2982,19 @@ function buildWeatherAssist(wmo,maxT,minT,rain,wind,hpa,curTemp){
   if(outer) outfit += ` ＋ ${outer}`;
   if(accessories.length) outfit += `　／　${accessories.join('・')}`;
 
-  // 注意コメント（服装メモと重複しないよう気圧・猛暑のみ追記）
+  // 注意コメント
   const notes = [];
+  if(rain > 0)          notes.push(`☂️ 降水${rain}mm予報。レインウェアを忘れずに。`);
+  if(windKmh > 30)      notes.push(`💨 強風（${windKmh}km/h）。走行中ハンドルを取られやすい。`);
   if(hpa && hpa < 1000) notes.push(`🌀 気圧低め（${hpa}hPa）。頭痛・倦怠感に注意。`);
   if(maxT >= 35)        notes.push(`🥵 猛暑日。日焼け止め・アームカバー推奨。`);
+  if(minT <= 0)         notes.push(`❄️ 最低気温${minT}℃。路面凍結の可能性あり。速度注意。`);
 
   return `
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
-      <div style="font-size:18px;line-height:1">${levelInfo.icon}</div>
-      <div>
-        <div style="font-size:10px;font-weight:700;color:${levelInfo.color}">${levelInfo.label}</div>
-        <div style="font-size:9px;color:var(--t2)">原付危険度</div>
-      </div>
-      <div style="flex:1;border-left:1px solid var(--border);padding-left:8px">
-        <div style="font-size:10px;color:var(--t2);margin-bottom:2px">🛵 体感 <b style="color:var(--text)">${bikeFeels}℃</b>（気温${curTemp}℃・風${windKmh}km/h）</div>
-        <div style="font-size:12px;font-weight:600;color:var(--text);line-height:1.6">${outfit}</div>
-      </div>
+    <div style="margin-bottom:6px">
+      <div style="font-size:10px;color:var(--t2);margin-bottom:3px">🛵 原付通勤　体感 <b style="color:var(--text)">${bikeFeels}℃</b>（気温${curTemp}℃・風${windKmh}km/h）</div>
+      <div style="font-size:12px;font-weight:600;color:var(--text);line-height:1.7">${outfit}</div>
     </div>
-    ${risks.length ? `<div style="font-size:11px;color:var(--t3);line-height:1.9;padding:4px 0 2px">${risks.join('<br>')}</div>` : ''}
     ${notes.length ? `<div style="font-size:11px;color:var(--t3);line-height:1.9">${notes.join('<br>')}</div>` : ''}
   `;
 }
