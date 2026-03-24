@@ -2447,7 +2447,7 @@ async function sendAIFeedback(context){
       tomorrowWeather:tmrW,tomorrowPressure:tmrP,
       emotions:[...(r.emoMorning||[]),...(r.emoNoon||[]),...(r.emoNight||[])],
     };
-    gasPostWithRetry(payload);
+    gasPostWithRetry(payload,3,false,true).then(ok=>{ if(!ok)enqueue(payload); });
 
     prompt=`Charko（双極性障害・コンサータ・眠前薬4種・愛知県半田市・原付通勤）の今日の記録です。
 気分：朝${r.scoreMorning||'未'} 昼${r.scoreNoon||'未'} 夜${r.scoreNight||'未'}
@@ -3007,7 +3007,7 @@ function enqueue(payload){
   q.push({payload,queuedAt:new Date().toISOString()});
   localStorage.setItem(QUEUE_KEY,JSON.stringify(q));
 }
-async function gasPostWithRetry(payload,maxRetry=3,returnResponse=false){
+async function gasPostWithRetry(payload,maxRetry=3,returnResponse=false,silent=false){
   for(let i=0;i<maxRetry;i++){
     try{
       const res=await fetch(GAS_URL,{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify(payload)});
@@ -3017,7 +3017,10 @@ async function gasPostWithRetry(payload,maxRetry=3,returnResponse=false){
     }catch(e){
       if(i===maxRetry-1){
         const code=e.message.match(/\d{3}/)?.[0]||'network';
-        if(!returnResponse)showError('GAS送信失敗',code,e.message.slice(0,80));
+        if(!returnResponse){
+          if(silent)showToast('⚠️ スプシ送信失敗（設定から再送できます）','var(--a2)');
+          else showError('GAS送信失敗',code,e.message.slice(0,80));
+        }
         return false;
       }
       await new Promise(r=>setTimeout(r,1500*(i+1)));
