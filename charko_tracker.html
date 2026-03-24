@@ -3010,7 +3010,7 @@ function enqueue(payload){
 async function gasPostWithRetry(payload,maxRetry=3,returnResponse=false){
   for(let i=0;i<maxRetry;i++){
     try{
-      const res=await fetch(GAS_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+      const res=await fetch(GAS_URL,{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify(payload)});
       if(returnResponse)return res;
       if(res.ok)return true;
       throw new Error(String(res.status));
@@ -3039,7 +3039,7 @@ async function triggerUnifiedLog(){
   const el=document.getElementById('unified-status');
   if(el)el.textContent='実行中...';
   try{
-    const res=await fetch(GAS_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({type:'unified_log'})});
+    const res=await fetch(GAS_URL,{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify({type:'unified_log'})});
     const d=await res.json();
     if(el)el.textContent=d.message||'完了';
   }catch(e){
