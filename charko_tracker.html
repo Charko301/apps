@@ -1453,7 +1453,7 @@ label{display:block;font-size:9px;color:var(--t2);font-weight:600;letter-spacing
       <div class="acc-hr"><span class="acc-arrow">▼</span></div>
     </div>
     <div class="acc-b" id="set-howto" style="border-color:#2a2a3a">
-      <div style="font-size:11px;color:var(--text);font-weight:500;margin-bottom:7px">🌸 Charko Tracker v4.0</div>
+      <div style="font-size:11px;color:var(--text);font-weight:500;margin-bottom:7px">🌸 Charko Tracker v4.15b</div>
       <div style="font-size:10px;color:var(--t2);line-height:1.9">
         毎日の体調・服薬・気分・生活記録をスマホ・PCで管理し、Googleスプレッドシートに同期するアプリです。<br><br>
         <b style="color:var(--text)">🌅 朝タブ</b>：起床時刻（「今」or 手入力0省略OK）・睡眠の質・中途覚醒（ありで時刻/症状欄が展開）・コンサータ服薬・朝食・気分/活力/状態・感情タグ<br><br>
@@ -1501,6 +1501,7 @@ label{display:block;font-size:9px;color:var(--t2);font-weight:600;letter-spacing
     </div>
     <div class="acc-b" id="set-versions" style="border-color:#2a2a3a">
       <div style="font-size:10px;color:var(--t2);line-height:2">
+        <b style="color:var(--a3)">v4.15b</b>（2026/03）原付危険度インジケーター統合・天気無限再帰バグ修正・Googleログイン改善<br>
         <b style="color:var(--a3)">v4.0</b>（2026/03）新データ構造（feedbacks配列）・複数AIモデル対応・全面リビルド<br>
         <b style="color:var(--a3)">v3.9</b>（2026/03）中途覚醒UI改善・状態評価順番変更・使い方分離<br>
         <b style="color:var(--a3)">v3.8</b>（2026/03）月0省略・今ボタン色管理・グラフ位置バグ修正<br>
@@ -1554,7 +1555,7 @@ const HANDA_LAT=34.8939,HANDA_LNG=136.9380;
 const CLIENT_ID='933210373015-34tar1apnfdcb94gl743tqajpp954m0r.apps.googleusercontent.com';
 const SHEET_ID='1ikC4auuAYjrqQKFsygCqXIY2L0Fjye-OoLBGLEwXq5I';
 const GAS_URL='https://script.google.com/macros/s/AKfycbwummKFKtsuDPTZ_QlcyF_rbF3iyCU4jWgMqJZ1U8lx2EmX93SOtxqCNaeLVsNHkDuoZA/exec';
-const APP_VER='4.15';
+const APP_VER='4.15b';
 const QUEUE_KEY='gas_queue';
 const ROUTINE_KEY='routines_v2';
 const ROUTINE_LOG_KEY='routine_log_v2';
@@ -2948,8 +2949,10 @@ function buildWeatherAssist(wmo,maxT,minT,rain,wind,hpa,curTemp){
   // 原付走行中の体感温度（速度30km/h想定）
   const windKmh = wind || 0;
   const bikeFeels = Math.round(curTemp - (windKmh + 30) * 0.3);
-  // 通常の体感温度（徒歩）
-  const walkFeels = Math.round(curTemp - windKmh * 0.3);
+
+  // 原付危険度
+  const risk = calcBikeRisk(curTemp, windKmh, hpa, rain, wmo);
+  const { levelInfo, risks } = risk;
 
   // トップス判定（原付体感温度基準）
   let tops = '';
@@ -2983,19 +2986,24 @@ function buildWeatherAssist(wmo,maxT,minT,rain,wind,hpa,curTemp){
   if(outer) outfit += ` ＋ ${outer}`;
   if(accessories.length) outfit += `　／　${accessories.join('・')}`;
 
-  // 注意コメント
+  // 注意コメント（服装メモと重複しないよう気圧・猛暑のみ追記）
   const notes = [];
-  if(rain > 0)        notes.push(`☂️ 降水${rain}mm予報。レインウェアを忘れずに。`);
-  if(windKmh > 30)    notes.push(`💨 強風（${windKmh}km/h）。走行中ハンドルを取られやすい。`);
   if(hpa && hpa < 1000) notes.push(`🌀 気圧低め（${hpa}hPa）。頭痛・倦怠感に注意。`);
-  if(maxT >= 35)      notes.push(`🥵 猛暑日。日焼け止め・アームカバー推奨。`);
-  if(minT <= 0)       notes.push(`❄️ 最低気温${minT}℃。路面凍結の可能性あり。速度注意。`);
+  if(maxT >= 35)        notes.push(`🥵 猛暑日。日焼け止め・アームカバー推奨。`);
 
   return `
-    <div style="margin-bottom:6px">
-      <div style="font-size:10px;color:var(--t2);margin-bottom:3px">🛵 原付通勤　体感 <b style="color:var(--text)">${bikeFeels}℃</b>（気温${curTemp}℃・風${windKmh}km/h）</div>
-      <div style="font-size:12px;font-weight:600;color:var(--text);line-height:1.7">${outfit}</div>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+      <div style="font-size:18px;line-height:1">${levelInfo.icon}</div>
+      <div>
+        <div style="font-size:10px;font-weight:700;color:${levelInfo.color}">${levelInfo.label}</div>
+        <div style="font-size:9px;color:var(--t2)">原付危険度</div>
+      </div>
+      <div style="flex:1;border-left:1px solid var(--border);padding-left:8px">
+        <div style="font-size:10px;color:var(--t2);margin-bottom:2px">🛵 体感 <b style="color:var(--text)">${bikeFeels}℃</b>（気温${curTemp}℃・風${windKmh}km/h）</div>
+        <div style="font-size:12px;font-weight:600;color:var(--text);line-height:1.6">${outfit}</div>
+      </div>
     </div>
+    ${risks.length ? `<div style="font-size:11px;color:var(--t3);line-height:1.9;padding:4px 0 2px">${risks.join('<br>')}</div>` : ''}
     ${notes.length ? `<div style="font-size:11px;color:var(--t3);line-height:1.9">${notes.join('<br>')}</div>` : ''}
   `;
 }
