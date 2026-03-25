@@ -194,10 +194,12 @@ label{display:block;font-size:9px;color:var(--t2);font-weight:600;letter-spacing
 .ai-sel-btn.active-gemini{border-color:var(--a3);color:var(--a3);background:#082a14;}
 .ai-sel-btn.active-gpt{border-color:var(--a4);color:var(--a4);background:#2a1a04;}
 /* トースト */
-.toast-ov{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:999;pointer-events:none;opacity:0;transition:opacity .3s;}
-.toast-ov.show{opacity:1;}
-.toast-box{background:var(--accent);color:#fff;padding:13px 24px;border-radius:12px;font-size:14px;font-weight:500;box-shadow:0 8px 32px rgba(124,106,247,.4);transform:scale(.8);transition:transform .3s;}
-.toast-ov.show .toast-box{transform:scale(1);}
+.toast-ov{position:fixed;left:0;right:0;bottom:80px;display:flex;align-items:center;justify-content:center;z-index:9999;pointer-events:none;opacity:0;transition:opacity .25s,transform .25s;transform:translateY(10px);}
+.toast-ov.show{opacity:1;transform:translateY(0);}
+.toast-box{background:var(--accent);color:#fff;padding:12px 22px;border-radius:12px;font-size:14px;font-weight:500;box-shadow:0 4px 24px rgba(0,0,0,.5);max-width:88vw;text-align:center;word-break:break-all;}
+/* スプシ同期ミニボタン */
+.sync-mini{padding:5px 8px;background:none;border:1px solid #2a4a2a;border-radius:var(--r2);color:#4af7a0;font-size:10px;cursor:pointer;flex-shrink:0;opacity:.7;transition:opacity .12s;}
+.sync-mini:hover,.sync-mini:active{opacity:1;background:#0a200a;}
 /* エラーオーバーレイ */
 .overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:200;display:none;align-items:center;justify-content:center;padding:20px;}
 .overlay.show{display:flex;}
@@ -590,6 +592,7 @@ label{display:block;font-size:9px;color:var(--t2);font-weight:600;letter-spacing
           <input type="text" id="m-wake" class="time-txt" placeholder="07:30" maxlength="5"
             oninput="onManualTimeInput(this,'wake-now')" onblur="onTimeBlur(this)" onkeydown="onTimeKeydown(this,event)" onfocus="this.select()">
           <button class="now-btn" id="wake-now" onclick="stampTime('m-wake','wake-now')">今</button>
+          <button class="sync-mini" onclick="syncNow('起床')">📊</button>
           <span id="wake-disp" style="font-size:11px;color:var(--t2);min-width:40px;font-family:'DM Mono',monospace"></span>
           <span id="sleep-calc" style="font-size:10px;color:var(--a5)"></span>
         </div>
@@ -696,9 +699,20 @@ label{display:block;font-size:9px;color:var(--t2);font-weight:600;letter-spacing
           oninput="onMealTimeInput(this,'meal-m','meal-m-now','meal-m-no')" onblur="onTimeBlur(this)" onkeydown="onTimeKeydown(this,event)" onfocus="this.select()">
         <button class="now-btn" id="meal-m-now" onclick="stampMeal('meal-m','meal-m-time','meal-m-now','meal-m-no')">今</button>
         <div class="sel-btn" id="meal-m-no" onclick="clearMeal('meal-m','meal-m-time','meal-m-now','meal-m-no')">食べてない</div>
+        <button class="sync-mini" onclick="syncNow('朝食')">📊</button>
+      </div>
+      <div style="display:flex;gap:5px;margin-bottom:7px">
+        <div class="sel-btn" id="meal-m-type-in" onclick="setMealType('meal-m','内食')">🏠内食</div>
+        <div class="sel-btn" id="meal-m-type-ch" onclick="setMealType('meal-m','中食')">🛒中食</div>
+        <div class="sel-btn" id="meal-m-type-out" onclick="setMealType('meal-m','外食')">🍽外食</div>
       </div>
       <input type="hidden" id="meal-m">
-      <input type="text" id="meal-m-memo" name="meal-m-memo-x7q" placeholder="食べたもの" style="width:100%" autocomplete="off" readonly onfocus="this.removeAttribute('readonly')">
+      <input type="hidden" id="meal-m-type">
+      <div id="meal-m-items" class="ts-list"></div>
+      <div class="ts-add">
+        <input type="text" id="meal-m-item-input" placeholder="食べたもの（複数追加可）" style="min-height:36px;font-size:11px;padding:6px 8px" onkeydown="if(event.key==='Enter'){event.preventDefault();addMealItem('meal-m');}">
+        <button class="ts-add-btn" onclick="addMealItem('meal-m')">+</button>
+      </div>
     </div>
   </div>
 
@@ -720,6 +734,7 @@ label{display:block;font-size:9px;color:var(--t2);font-weight:600;letter-spacing
               oninput="onMedTimeInput(this,'m-conserta','con-now','con-no')" onblur="onTimeBlur(this)" onkeydown="onTimeKeydown(this,event)" onfocus="this.select()">
             <button class="now-btn" id="con-now" onclick="stampMed('m-conserta','m-med-time','con-now','con-no')">今</button>
             <div class="sel-btn" id="con-no" onclick="clearMed('m-conserta','m-med-time','con-now','con-no')">飲んでない</div>
+            <button class="sync-mini" onclick="syncNow('服薬')">📊</button>
           </div>
           <input type="hidden" id="m-conserta">
         </div>
@@ -813,9 +828,20 @@ label{display:block;font-size:9px;color:var(--t2);font-weight:600;letter-spacing
           oninput="onMealTimeInput(this,'meal-n','meal-n-now','meal-n-no')" onblur="onTimeBlur(this)" onkeydown="onTimeKeydown(this,event)" onfocus="this.select()">
         <button class="now-btn" id="meal-n-now" onclick="stampMeal('meal-n','meal-n-time','meal-n-now','meal-n-no')">今</button>
         <div class="sel-btn" id="meal-n-no" onclick="clearMeal('meal-n','meal-n-time','meal-n-now','meal-n-no')">食べてない</div>
+        <button class="sync-mini" onclick="syncNow('昼食')">📊</button>
+      </div>
+      <div style="display:flex;gap:5px;margin-bottom:7px">
+        <div class="sel-btn" id="meal-n-type-in" onclick="setMealType('meal-n','内食')">🏠内食</div>
+        <div class="sel-btn" id="meal-n-type-ch" onclick="setMealType('meal-n','中食')">🛒中食</div>
+        <div class="sel-btn" id="meal-n-type-out" onclick="setMealType('meal-n','外食')">🍽外食</div>
       </div>
       <input type="hidden" id="meal-n">
-      <input type="text" id="meal-n-memo" name="meal-n-memo-x7q" placeholder="食べたもの" style="width:100%" autocomplete="off" readonly onfocus="this.removeAttribute('readonly')">
+      <input type="hidden" id="meal-n-type">
+      <div id="meal-n-items" class="ts-list"></div>
+      <div class="ts-add">
+        <input type="text" id="meal-n-item-input" placeholder="食べたもの（複数追加可）" style="min-height:36px;font-size:11px;padding:6px 8px" onkeydown="if(event.key==='Enter'){event.preventDefault();addMealItem('meal-n');}">
+        <button class="ts-add-btn" onclick="addMealItem('meal-n')">+</button>
+      </div>
     </div>
   </div>
 
@@ -827,7 +853,7 @@ label{display:block;font-size:9px;color:var(--t2);font-weight:600;letter-spacing
     </div>
     <div class="acc-b" id="acc-work">
       <div class="btn-row" style="margin-bottom:7px">
-        <div class="sel-btn" onclick="selB(this,'attend','出勤','ag');setAttendTime();setAttendGray(false)">出勤</div>
+        <div class="sel-btn" onclick="selB(this,'attend','出勤','ag');setAttendTime();setAttendGray(false);autoSetNoonType()">出勤</div>
         <div class="sel-btn" onclick="selB(this,'attend','遅刻・早退','ay');setAttendGray(false);clearAttendTime()">遅刻・早退</div>
         <div class="sel-btn" onclick="selB(this,'attend','欠勤','ar');setAttendGray(true);showEl('attend-reason-fields',true)">欠勤</div>
         <div class="sel-btn" onclick="selB(this,'attend','休日','ab');setAttendGray(true)">休日</div>
@@ -917,9 +943,20 @@ label{display:block;font-size:9px;color:var(--t2);font-weight:600;letter-spacing
           oninput="onMealTimeInput(this,'meal-e','meal-e-now','meal-e-no')" onblur="onTimeBlur(this)" onkeydown="onTimeKeydown(this,event)" onfocus="this.select()">
         <button class="now-btn" id="meal-e-now" onclick="stampMeal('meal-e','meal-e-time','meal-e-now','meal-e-no')">今</button>
         <div class="sel-btn" id="meal-e-no" onclick="clearMeal('meal-e','meal-e-time','meal-e-now','meal-e-no')">食べてない</div>
+        <button class="sync-mini" onclick="syncNow('夕食')">📊</button>
+      </div>
+      <div style="display:flex;gap:5px;margin-bottom:7px">
+        <div class="sel-btn" id="meal-e-type-in" onclick="setMealType('meal-e','内食')">🏠内食</div>
+        <div class="sel-btn" id="meal-e-type-ch" onclick="setMealType('meal-e','中食')">🛒中食</div>
+        <div class="sel-btn" id="meal-e-type-out" onclick="setMealType('meal-e','外食')">🍽外食</div>
       </div>
       <input type="hidden" id="meal-e">
-      <input type="text" id="meal-e-memo" name="meal-e-memo-x7q" placeholder="食べたもの" style="width:100%" autocomplete="off" readonly onfocus="this.removeAttribute('readonly')">
+      <input type="hidden" id="meal-e-type">
+      <div id="meal-e-items" class="ts-list"></div>
+      <div class="ts-add">
+        <input type="text" id="meal-e-item-input" placeholder="食べたもの（複数追加可）" style="min-height:36px;font-size:11px;padding:6px 8px" onkeydown="if(event.key==='Enter'){event.preventDefault();addMealItem('meal-e');}">
+        <button class="ts-add-btn" onclick="addMealItem('meal-e')">+</button>
+      </div>
     </div>
   </div>
 
@@ -938,6 +975,7 @@ label{display:block;font-size:9px;color:var(--t2);font-weight:600;letter-spacing
             oninput="onMedTimeInput(this,'night-med','nmed-now','nmed-no')" onblur="onTimeBlur(this)" onkeydown="onTimeKeydown(this,event)" onfocus="this.select()">
           <button class="now-btn" id="nmed-now" onclick="stampMed('night-med','night-med-time','nmed-now','nmed-no')">今</button>
           <div class="sel-btn" id="nmed-no" onclick="clearMed('night-med','night-med-time','nmed-now','nmed-no')">飲んでない</div>
+          <button class="sync-mini" onclick="syncNow('眠前薬')">📊</button>
         </div>
         <input type="hidden" id="night-med">
       </div>
@@ -947,6 +985,7 @@ label{display:block;font-size:9px;color:var(--t2);font-weight:600;letter-spacing
           <input type="text" id="sleep-time" class="time-txt" placeholder="23:30" maxlength="5"
             oninput="onManualTimeInput(this,'sleep-now')" onblur="onTimeBlur(this)" onkeydown="onTimeKeydown(this,event)" onfocus="this.select()">
           <button class="now-btn" id="sleep-now" onclick="stampTime('sleep-time','sleep-now')">今</button>
+          <button class="sync-mini" onclick="syncNow('就寝')">📊</button>
         </div>
       </div>
     </div>
@@ -1501,6 +1540,7 @@ label{display:block;font-size:9px;color:var(--t2);font-weight:600;letter-spacing
     </div>
     <div class="acc-b" id="set-versions" style="border-color:#2a2a3a">
       <div style="font-size:10px;color:var(--t2);line-height:2">
+        <b style="color:var(--a3)">v4.16</b>（2026/03）食事タイプ(内食・中食・外食)全食事対応・出勤時昼食自動中食・複数食べたもの追加・📊個別スプシ保存ボタン・トースト改善・AIエラートースト化<br>
         <b style="color:var(--a3)">v4.15b</b>（2026/03）原付危険度インジケーター統合・天気無限再帰バグ修正・Googleログイン改善<br>
         <b style="color:var(--a3)">v4.0</b>（2026/03）新データ構造（feedbacks配列）・複数AIモデル対応・全面リビルド<br>
         <b style="color:var(--a3)">v3.9</b>（2026/03）中途覚醒UI改善・状態評価順番変更・使い方分離<br>
@@ -1555,7 +1595,7 @@ const HANDA_LAT=34.8939,HANDA_LNG=136.9380;
 const CLIENT_ID='933210373015-34tar1apnfdcb94gl743tqajpp954m0r.apps.googleusercontent.com';
 const SHEET_ID='1ikC4auuAYjrqQKFsygCqXIY2L0Fjye-OoLBGLEwXq5I';
 const GAS_URL='https://script.google.com/macros/s/AKfycbwummKFKtsuDPTZ_QlcyF_rbF3iyCU4jWgMqJZ1U8lx2EmX93SOtxqCNaeLVsNHkDuoZA/exec';
-const APP_VER='4.15b';
+const APP_VER='4.16';
 const QUEUE_KEY='gas_queue';
 const ROUTINE_KEY='routines_v2';
 const ROUTINE_LOG_KEY='routine_log_v2';
@@ -1650,11 +1690,22 @@ function copyErrDetail(){
 // ═══════════════════════════════════════════════
 // トースト
 // ═══════════════════════════════════════════════
+let _toastTimer=null;
 function showToast(msg,color){
   const ov=document.getElementById('toast-overlay');
   const box=document.getElementById('toast-box');
-  box.textContent=msg;box.style.background=color||'var(--accent)';
-  ov.classList.add('show');setTimeout(()=>ov.classList.remove('show'),2200);
+  if(!ov||!box)return;
+  box.textContent=msg;
+  box.style.background=color||'var(--accent)';
+  ov.classList.remove('show');
+  if(_toastTimer)clearTimeout(_toastTimer);
+  // 1フレーム待ってからshowクラスを付与（再表示時のアニメーションをリセット）
+  requestAnimationFrame(()=>{
+    requestAnimationFrame(()=>{
+      ov.classList.add('show');
+      _toastTimer=setTimeout(()=>ov.classList.remove('show'),3000);
+    });
+  });
 }
 
 // ═══════════════════════════════════════════════
@@ -1967,6 +2018,69 @@ function clearAttendTime(){
   showEl('attend-late-fields',true);showEl('attend-reason-fields',false);
 }
 
+// ─── 食事タイプ（内食・中食・外食）───
+const MEAL_TYPE_SUFFIX={'内食':'in','中食':'ch','外食':'out'};
+const MEAL_TYPE_COLOR={'内食':'ag','中食':'ay','外食':'ab'};
+const MEAL_DATA_KEY={'meal-m':'mealMorningType','meal-n':'mealNoonType','meal-e':'mealNightType'};
+function setMealType(prefix,type){
+  const hid=document.getElementById(prefix+'-type');
+  if(hid)hid.value=type;
+  ['in','ch','out'].forEach(t=>{
+    const btn=document.getElementById(`${prefix}-type-${t}`);
+    if(!btn)return;
+    const isActive=MEAL_TYPE_SUFFIX[type]===t;
+    btn.className=isActive?`sel-btn ${MEAL_TYPE_COLOR[type]}`.trim():'sel-btn';
+  });
+  const key=MEAL_DATA_KEY[prefix];
+  if(key)saveRec({[key]:type});
+}
+function restoreMealType(prefix,type){
+  if(!type)return;
+  const hid=document.getElementById(prefix+'-type');
+  if(hid)hid.value=type;
+  ['in','ch','out'].forEach(t=>{
+    const btn=document.getElementById(`${prefix}-type-${t}`);
+    if(!btn)return;
+    const isActive=MEAL_TYPE_SUFFIX[type]===t;
+    btn.className=isActive?`sel-btn ${MEAL_TYPE_COLOR[type]}`.trim():'sel-btn';
+  });
+}
+function autoSetNoonType(){
+  // 未設定のときだけ自動で中食にする（手動変更済みなら上書きしない）
+  const r=recData();
+  if(!r.mealNoonType)setMealType('meal-n','中食');
+}
+
+// ─── 食べたもの（複数アイテム）───
+const MEAL_ITEMS_KEY={'meal-m':'mealMorningItems','meal-n':'mealNoonItems','meal-e':'mealNightItems'};
+function addMealItem(prefix){
+  const inp=document.getElementById(`${prefix}-item-input`);
+  const text=(inp?.value||'').trim();
+  if(!text)return;
+  const r=recData();
+  const key=MEAL_ITEMS_KEY[prefix];
+  const items=[...(r[key]||[]),text];
+  saveRec({[key]:items});
+  inp.value='';
+  renderMealItems(prefix,items);
+}
+function removeMealItem(prefix,idx){
+  const r=recData();
+  const key=MEAL_ITEMS_KEY[prefix];
+  const items=(r[key]||[]).filter((_,i)=>i!==idx);
+  saveRec({[key]:items});
+  renderMealItems(prefix,items);
+}
+function renderMealItems(prefix,items){
+  const el=document.getElementById(`${prefix}-items`);
+  if(!el)return;
+  el.innerHTML=(items||[]).map((text,i)=>`
+    <div class="ts-item">
+      <span class="ts-text">${text.replace(/</g,'&lt;')}</span>
+      <button class="ts-del" onclick="removeMealItem('${prefix}',${i})">✕</button>
+    </div>`).join('');
+}
+
 // ─── 中途覚醒スタンプ ───
 function addWakeupStamp(){
   const now=new Date().toTimeString().slice(0,5);
@@ -2257,11 +2371,15 @@ function loadFormData(){
     if(hidVal==='食べてない'&&noBtn)noBtn.className='sel-btn ar';
   };
   restoreMeal('meal-m','meal-m-time','meal-m-now','meal-m-no',r.mealMorning,r.mealMorningTime);
-  sv('meal-m-memo',r.mealMorningMemo||'');
+  restoreMealType('meal-m',r.mealMorningType);
+  // 旧memoをitemsに移行（初回のみ）
+  {const items=r.mealMorningItems||(r.mealMorningMemo?[r.mealMorningMemo]:[]);renderMealItems('meal-m',items);}
   restoreMeal('meal-n','meal-n-time','meal-n-now','meal-n-no',r.mealNoon,r.mealNoonTime);
-  sv('meal-n-memo',r.mealNoonMemo||'');
+  restoreMealType('meal-n',r.mealNoonType);
+  {const items=r.mealNoonItems||(r.mealNoonMemo?[r.mealNoonMemo]:[]);renderMealItems('meal-n',items);}
   restoreMeal('meal-e','meal-e-time','meal-e-now','meal-e-no',r.mealNight,r.mealNightTime);
-  sv('meal-e-memo',r.mealNightMemo||'');
+  restoreMealType('meal-e',r.mealNightType);
+  {const items=r.mealNightItems||(r.mealNightMemo?[r.mealNightMemo]:[]);renderMealItems('meal-e',items);}
 
   // 服薬
   const restoreMed=(hidId,timeId,nowId,noId,hidVal,timeVal)=>{
@@ -2356,7 +2474,7 @@ function saveMorning(){
     emoMorning:getEmos('emo-m'),emoMemoMorning:document.getElementById('emo-memo-m').value,
     mealMorning:document.getElementById('meal-m').value||'食べてない',
     mealMorningTime:getTimeVal('meal-m-time'),
-    mealMorningMemo:document.getElementById('meal-m-memo').value,
+    mealMorningType:document.getElementById('meal-m-type')?.value||'',
     symptoms:getSymptoms(),condition:document.getElementById('condition-m').value,
     weatherHpa:w.hpa||null,weatherLabel:w.weather||null,weatherIcon:w.icon||null,
   });
@@ -2370,7 +2488,7 @@ function saveNoon(){
     emoNoon:getEmos('emo-n'),emoMemoNoon:document.getElementById('emo-memo-n').value,
     mealNoon:document.getElementById('meal-n').value||'食べてない',
     mealNoonTime:getTimeVal('meal-n-time'),
-    mealNoonMemo:document.getElementById('meal-n-memo').value,
+    mealNoonType:document.getElementById('meal-n-type')?.value||'',
     attend:document.getElementById('attend').value,
     attendIn:getTimeVal('attend-in'),attendOut:getTimeVal('attend-out'),
     attendReason:document.getElementById('attend-reason-text').value||document.getElementById('attend-reason-text2').value,
@@ -2386,7 +2504,7 @@ function saveNight(){
     emoNight:getEmos('emo-e'),emoMemoNight:document.getElementById('emo-memo-e').value,
     mealNight:document.getElementById('meal-e').value||'食べてない',
     mealNightTime:getTimeVal('meal-e-time'),
-    mealNightMemo:document.getElementById('meal-e-memo').value,
+    mealNightType:document.getElementById('meal-e-type')?.value||'',
     nightMed:document.getElementById('night-med').value||'飲んでない',
     nightMedTime:getTimeVal('night-med-time'),
     sleepTime:getTimeVal('sleep-time'),
@@ -2447,7 +2565,7 @@ async function sendAIFeedback(context){
       tomorrowWeather:tmrW,tomorrowPressure:tmrP,
       emotions:[...(r.emoMorning||[]),...(r.emoNoon||[]),...(r.emoNight||[])],
     };
-    gasPostWithRetry(payload,3,false,true).then(ok=>{ if(!ok)enqueue(payload); });
+    gasPostWithRetry(payload);
 
     prompt=`Charko（双極性障害・コンサータ・眠前薬4種・愛知県半田市・原付通勤）の今日の記録です。
 気分：朝${r.scoreMorning||'未'} 昼${r.scoreNoon||'未'} 夜${r.scoreNight||'未'}
@@ -2495,7 +2613,7 @@ async function sendAIFeedback(context){
       showAIBanner(model,text);
     }
   }catch(e){
-    showError('AIフィードバック取得失敗',e.message.match(/\d{3}/)?.[0]||'network',e.message.slice(0,80));
+    showToast('⚠️ AIフィードバック失敗: '+e.message.slice(0,40),'var(--a2)');
   }
 }
 
@@ -2950,6 +3068,10 @@ function buildWeatherAssist(wmo,maxT,minT,rain,wind,hpa,curTemp){
   const windKmh = wind || 0;
   const bikeFeels = Math.round(curTemp - (windKmh + 30) * 0.3);
 
+  // 原付危険度
+  const risk = calcBikeRisk(curTemp, windKmh, hpa, rain, wmo);
+  const { levelInfo, risks } = risk;
+
   // トップス判定（原付体感温度基準）
   let tops = '';
   if(bikeFeels >= 28)      tops = '半袖Tシャツ';
@@ -2982,19 +3104,24 @@ function buildWeatherAssist(wmo,maxT,minT,rain,wind,hpa,curTemp){
   if(outer) outfit += ` ＋ ${outer}`;
   if(accessories.length) outfit += `　／　${accessories.join('・')}`;
 
-  // 注意コメント
+  // 注意コメント（服装メモと重複しないよう気圧・猛暑のみ追記）
   const notes = [];
-  if(rain > 0)          notes.push(`☂️ 降水${rain}mm予報。レインウェアを忘れずに。`);
-  if(windKmh > 30)      notes.push(`💨 強風（${windKmh}km/h）。走行中ハンドルを取られやすい。`);
   if(hpa && hpa < 1000) notes.push(`🌀 気圧低め（${hpa}hPa）。頭痛・倦怠感に注意。`);
   if(maxT >= 35)        notes.push(`🥵 猛暑日。日焼け止め・アームカバー推奨。`);
-  if(minT <= 0)         notes.push(`❄️ 最低気温${minT}℃。路面凍結の可能性あり。速度注意。`);
 
   return `
-    <div style="margin-bottom:6px">
-      <div style="font-size:10px;color:var(--t2);margin-bottom:3px">🛵 原付通勤　体感 <b style="color:var(--text)">${bikeFeels}℃</b>（気温${curTemp}℃・風${windKmh}km/h）</div>
-      <div style="font-size:12px;font-weight:600;color:var(--text);line-height:1.7">${outfit}</div>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+      <div style="font-size:18px;line-height:1">${levelInfo.icon}</div>
+      <div>
+        <div style="font-size:10px;font-weight:700;color:${levelInfo.color}">${levelInfo.label}</div>
+        <div style="font-size:9px;color:var(--t2)">原付危険度</div>
+      </div>
+      <div style="flex:1;border-left:1px solid var(--border);padding-left:8px">
+        <div style="font-size:10px;color:var(--t2);margin-bottom:2px">🛵 体感 <b style="color:var(--text)">${bikeFeels}℃</b>（気温${curTemp}℃・風${windKmh}km/h）</div>
+        <div style="font-size:12px;font-weight:600;color:var(--text);line-height:1.6">${outfit}</div>
+      </div>
     </div>
+    ${risks.length ? `<div style="font-size:11px;color:var(--t3);line-height:1.9;padding:4px 0 2px">${risks.join('<br>')}</div>` : ''}
     ${notes.length ? `<div style="font-size:11px;color:var(--t3);line-height:1.9">${notes.join('<br>')}</div>` : ''}
   `;
 }
@@ -3007,20 +3134,17 @@ function enqueue(payload){
   q.push({payload,queuedAt:new Date().toISOString()});
   localStorage.setItem(QUEUE_KEY,JSON.stringify(q));
 }
-async function gasPostWithRetry(payload,maxRetry=3,returnResponse=false,silent=false){
+async function gasPostWithRetry(payload,maxRetry=3,returnResponse=false){
   for(let i=0;i<maxRetry;i++){
     try{
-      const res=await fetch(GAS_URL,{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify(payload)});
+      const res=await fetch(GAS_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
       if(returnResponse)return res;
       if(res.ok)return true;
       throw new Error(String(res.status));
     }catch(e){
       if(i===maxRetry-1){
         const code=e.message.match(/\d{3}/)?.[0]||'network';
-        if(!returnResponse){
-          if(silent)showToast('⚠️ スプシ送信失敗（設定から再送できます）','var(--a2)');
-          else showError('GAS送信失敗',code,e.message.slice(0,80));
-        }
+        if(!returnResponse)showError('GAS送信失敗',code,e.message.slice(0,80));
         return false;
       }
       await new Promise(r=>setTimeout(r,1500*(i+1)));
@@ -3042,7 +3166,7 @@ async function triggerUnifiedLog(){
   const el=document.getElementById('unified-status');
   if(el)el.textContent='実行中...';
   try{
-    const res=await fetch(GAS_URL,{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify({type:'unified_log'})});
+    const res=await fetch(GAS_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({type:'unified_log'})});
     const d=await res.json();
     if(el)el.textContent=d.message||'完了';
   }catch(e){
@@ -3098,6 +3222,26 @@ async function syncAllToSheets(){
 }
 async function syncAllFromSheets(){showToast('スプシから読み込み中...','var(--accent)');}
 async function syncBetweenApps(){showToast('アプリ間同期中...','var(--accent)');}
+
+// ─── 今日の記録だけをスプシに保存（デバイス間共有用） ───
+async function syncNow(label){
+  if(!_gapiToken){
+    showToast('Googleログインが必要です（設定タブ→ログイン）','var(--a2)');
+    return;
+  }
+  const k=getSelDate();
+  const rec=loadRec(k);
+  const r=rec.data||rec;
+  try{
+    await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/App_Data!A1:append?valueInputOption=USER_ENTERED`,{
+      method:'POST',headers:{'Authorization':`Bearer ${_gapiToken}`,'Content-Type':'application/json'},
+      body:JSON.stringify({values:[[k,JSON.stringify(r)]]})
+    });
+    showToast(`📊 ${label||'記録'}をスプシに保存しました`,'var(--a3)');
+  }catch(e){
+    showToast('⚠️ スプシ保存失敗: '+e.message.slice(0,30),'var(--a2)');
+  }
+}
 
 // ─── バックアップ ───
 function exportData(){
@@ -3158,17 +3302,14 @@ const AUTOSAVE_MAP = {
   'wakeup-memo':      r=>({wakeupMemo:r.value}),
   'state-reason-m':   r=>({stateReasonMorning:r.value}),
   'emo-memo-m':       r=>({emoMemoMorning:r.value}),
-  'meal-m-memo':      r=>({mealMorningMemo:r.value}),
   'condition-m':      r=>({condition:r.value}),
   // 昼
   'emo-memo-n':       r=>({emoMemoNoon:r.value}),
-  'meal-n-memo':      r=>({mealNoonMemo:r.value}),
   'attend-memo':      r=>({attendMemo:r.value}),
   'attend-reason-text': r=>({attendReason:r.value}),
   'attend-reason-text2':r=>({attendReason:r.value}),
   // 夜
   'emo-memo-e':       r=>({emoMemoNight:r.value}),
-  'meal-e-memo':      r=>({mealNightMemo:r.value}),
   'diary':            r=>({diary:r.value}),
   'notes':            r=>({notes:r.value}),
   // 記録
@@ -3940,7 +4081,7 @@ ${todaySection}${historySection}`;
       if(dispEl){ dispEl.style.display='block'; dispEl.textContent='フィードバックが取得できませんでした。'; }
     }
   } catch(e){
-    showError('AIフィードバック取得失敗', e.message.match(/\d{3}/)?.[0]||'network', e.message.slice(0,80));
+    showToast('⚠️ AIフィードバック失敗: '+e.message.slice(0,40),'var(--a2)');
     if(dispEl){ dispEl.style.display='block'; dispEl.textContent='エラーが発生しました。'; }
   } finally {
     if(loadEl) loadEl.style.display = 'none';
