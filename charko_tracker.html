@@ -2438,7 +2438,7 @@ async function saveMorning(){
     wakeTime:getTimeVal('m-wake'),
     sleepQuality:document.getElementById('sleep-q').value,
     wakeup:document.getElementById('wakeup').value,
-    wakeupMemo:document.getElementById('wakeup-memo').value,
+    wakeupMemo:document.getElementById('wakeup-memo')?.value||'',
     conserta:document.getElementById('m-conserta').value||'飲んでない',
     consertaTime:(()=>{const t=getTimeVal('m-med-time');return t&&t!==':'?t:'';})()
 ,
