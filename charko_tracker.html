@@ -1608,7 +1608,7 @@ label{display:block;font-size:9px;color:var(--t2);font-weight:600;letter-spacing
 const HANDA_LAT=34.8939,HANDA_LNG=136.9380;
 const CLIENT_ID='933210373015-34tar1apnfdcb94gl743tqajpp954m0r.apps.googleusercontent.com';
 const SHEET_ID='1ikC4auuAYjrqQKFsygCqXIY2L0Fjye-OoLBGLEwXq5I';
-const GAS_URL='https://script.google.com/macros/s/AKfycbyq7C_5wLEhnOKLz-GNkB4Ue0jU5uJseO9jSM9NrXk1G0GwWFm26zB3x39gmR_coIrluA/exec';
+const GAS_URL='https://script.google.com/macros/s/AKfycbw6mX03apZGfjMbyWzImvAtdqyRZBnPkr5HzM2lm4IlmZuI6vXN5l5hGE5HAyEGANwz0w/exec';
 const APP_VER='4.22';
 const QUEUE_KEY='gas_queue';
 const ROUTINE_KEY='routines_v2';
@@ -2574,23 +2574,19 @@ async function sendAIFeedback(context){
     let text='';
     switch(model){
       case 'claude':{
-        const res=await fetch('https://api.anthropic.com/v1/messages',{
-          method:'POST',headers:{'Content-Type':'application/json'},
-          body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:2000,messages:[{role:'user',content:prompt}]})
-        });
-        const d=await res.json();text=(d.content||[]).map(c=>c.text||'').join('');
+        // GAS経由でClaude呼び出し（CORS回避）
+        const res=await gasPostWithRetry({type:'claude_feedback',context,prompt,data:r},3,true);
+        if(res&&res.ok){const d=await res.json();text=d.data?.text||d.text||'';}
         break;
       }
       case 'gemini':{
-        // GAS経由でGemini呼び出し（GAS側に実装済み想定）
-        const res=await gasPostWithRetry({type:'gemini_feedback',prompt},3,true);
-        if(res&&res.ok){const d=await res.json();text=d.text||'';}
+        const res=await gasPostWithRetry({type:'gemini_feedback',context,prompt,data:r},3,true);
+        if(res&&res.ok){const d=await res.json();text=d.data?.text||d.text||'';}
         break;
       }
       case 'gpt':{
-        // GAS経由でGPT呼び出し（GAS側に実装済み想定）
-        const res=await gasPostWithRetry({type:'gpt_feedback',prompt},3,true);
-        if(res&&res.ok){const d=await res.json();text=d.text||'';}
+        const res=await gasPostWithRetry({type:'gpt_feedback',context,prompt,data:r},3,true);
+        if(res&&res.ok){const d=await res.json();text=d.data?.text||d.text||'';}
         break;
       }
     }
@@ -2893,6 +2889,7 @@ function setRange(days,btn){
   document.querySelectorAll('.range-btn').forEach(b=>b.classList.remove('active'));
   if(btn)btn.classList.add('active');
   renderGraphs();
+  if(typeof updateGraphPeriodLabels==='function') updateGraphPeriodLabels(days);
 }
 function renderGraphs(){
   const recs=getAllRecs(currentRange);
@@ -3920,12 +3917,7 @@ function updateGraphPeriodLabels(days){
   });
 }
 
-// ─── setRange を上書きして期間ラベルも更新 ───
-const _origSetRange=setRange;
-function setRange(days,btn){
-  _origSetRange(days,btn);
-  updateGraphPeriodLabels(days);
-}
+// ─── setRange は 2891行で updateGraphPeriodLabels 込みで定義済み ───
 
 // ═══════════════════════════════════════════════
 // リマインダー管理（任意追加・削除・オンオフ）
@@ -4167,22 +4159,18 @@ ${todaySection}${historySection}`;
     let text = '';
     switch(model){
       case 'claude':{
-        const res = await fetch('https://api.anthropic.com/v1/messages',{
-          method:'POST', headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:2000,messages:[{role:'user',content:prompt}]})
-        });
-        const d = await res.json();
-        text = (d.content||[]).map(c=>c.text||'').join('');
+        const res = await gasPostWithRetry({type:'claude_feedback',context:'record',prompt,date:getSelDate()},3,true);
+        if(res&&res.ok){ const d=await res.json(); text=d.data?.text||d.text||''; }
         break;
       }
       case 'gemini':{
-        const res = await gasPostWithRetry({type:'gemini_feedback',prompt},3,true);
-        if(res&&res.ok){ const d=await res.json(); text=d.text||''; }
+        const res = await gasPostWithRetry({type:'gemini_feedback',context:'record',prompt,date:getSelDate()},3,true);
+        if(res&&res.ok){ const d=await res.json(); text=d.data?.text||d.text||''; }
         break;
       }
       case 'gpt':{
-        const res = await gasPostWithRetry({type:'gpt_feedback',prompt},3,true);
-        if(res&&res.ok){ const d=await res.json(); text=d.text||''; }
+        const res = await gasPostWithRetry({type:'gpt_feedback',context:'record',prompt,date:getSelDate()},3,true);
+        if(res&&res.ok){ const d=await res.json(); text=d.data?.text||d.text||''; }
         break;
       }
     }
