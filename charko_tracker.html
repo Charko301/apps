@@ -1607,7 +1607,7 @@ const HANDA_LAT=34.8939,HANDA_LNG=136.9380;
 const CLIENT_ID='933210373015-34tar1apnfdcb94gl743tqajpp954m0r.apps.googleusercontent.com';
 const SHEET_ID='1ikC4auuAYjrqQKFsygCqXIY2L0Fjye-OoLBGLEwXq5I';
 const GAS_URL='https://script.google.com/macros/s/AKfycbw6mX03apZGfjMbyWzImvAtdqyRZBnPkr5HzM2lm4IlmZuI6vXN5l5hGE5HAyEGANwz0w/exec';
-const APP_VER='4.19';
+const APP_VER='4.20';
 const QUEUE_KEY='gas_queue';
 const ROUTINE_KEY='routines_v2';
 const ROUTINE_LOG_KEY='routine_log_v2';
@@ -1655,6 +1655,20 @@ function saveRec(updates,k){
   rec.data={...rec.data,...updates,date:k};
   rec.metadata={...rec.metadata,updatedAt:new Date().toISOString(),appVer:APP_VER};
   localStorage.setItem(`rec_${k}`,JSON.stringify(rec));
+}
+
+/** 保存後にGASへ自動同期（成否をboolで返す） */
+async function autoSyncToGAS(k){
+  if(!GAS_URL)return false;
+  k=k||getSelDate();
+  const rec=loadRec(k);
+  const payload={...rec.data,date:k};
+  try{
+    const res=await fetch(GAS_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    return res.ok;
+  }catch(e){
+    return false;
+  }
 }
 
 /** フィードバックを追記（上書き禁止・配列に追加） */
@@ -2415,7 +2429,7 @@ function updateSleepDisp(){
 // ═══════════════════════════════════════════════
 // 保存関数
 // ═══════════════════════════════════════════════
-function saveMorning(){
+async function saveMorning(){
   updateSleepDisp();
   const w=window._autoWeather||{};
   saveRec({
@@ -2440,9 +2454,10 @@ function saveMorning(){
     symptoms:getSymptoms(),condition:document.getElementById('condition-m').value,
     weatherHpa:w.hpa||null,weatherLabel:w.weather||null,weatherIcon:w.icon||null,
   });
-  showToast('🌅 朝の記録を保存しました','#c09030');
+  const synced=await autoSyncToGAS();
+  showToast(synced?'🌅 朝の記録を保存しました ✅':'🌅 朝の記録を保存しました ⚠️ スプシ同期失敗','#c09030');
 }
-function saveNoon(){
+async function saveNoon(){
   saveRec({
     scoreNoon:document.getElementById('score-n').value,
     energyNoon:document.getElementById('energy-n').value,
@@ -2458,9 +2473,10 @@ function saveNoon(){
     attendReason:document.getElementById('attend-reason-text').value||document.getElementById('attend-reason-text2').value,
     attendMemo:document.getElementById('attend-memo').value,
   });
-  showToast('☀️ 昼の記録を保存しました','#306090');
+  const synced=await autoSyncToGAS();
+  showToast(synced?'☀️ 昼の記録を保存しました ✅':'☀️ 昼の記録を保存しました ⚠️ スプシ同期失敗','#306090');
 }
-function saveNight(){
+async function saveNight(){
   saveRec({
     scoreNight:document.getElementById('score-e').value,
     energyNight:document.getElementById('energy-e').value,
@@ -2477,10 +2493,11 @@ function saveNight(){
     diary:document.getElementById('diary').value,
     notes:document.getElementById('notes').value,
   });
-  showToast('🌙 夜の記録を保存しました','#6030a0');
+  const synced=await autoSyncToGAS();
+  showToast(synced?'🌙 夜の記録を保存しました ✅':'🌙 夜の記録を保存しました ⚠️ スプシ同期失敗','#6030a0');
   sendAIFeedback('night');
 }
-function saveRecord(){
+async function saveRecord(){
   saveRec({
     emotions:getEmos('emo-r'),emotionMemo:document.getElementById('emo-memo-r').value,
     actions:getActions(),actionReview:document.getElementById('action-review').value,
@@ -2490,7 +2507,8 @@ function saveRecord(){
     kotaReason:document.getElementById('kota-reason')?.value||'',
     // wakeupEntriesはaddWakeupEntry/updateWakeupEntryMemoで個別保存済み
   });
-  showToast('📓 記録を保存しました','#8040a0');
+  const synced=await autoSyncToGAS();
+  showToast(synced?'📓 記録を保存しました ✅':'📓 記録を保存しました ⚠️ スプシ同期失敗','#8040a0');
   renderPeriodPrediction();
   sendAIFeedback('record');
 }
