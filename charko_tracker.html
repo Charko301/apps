@@ -660,22 +660,22 @@ label{display:block;font-size:9px;color:var(--t2);font-weight:600;letter-spacing
       <div class="field">
         <label>気分スコア（朝）</label>
         <div class="sc-wrap">
-          <button class="sc-btn sc-m2" onclick="selSc(this,'score-m','-2')">−2<br><span style="font-size:8px">どん底</span></button>
-          <button class="sc-btn sc-m1" onclick="selSc(this,'score-m','-1')">−1<br><span style="font-size:8px">重い</span></button>
-          <button class="sc-btn sc-0"  onclick="selSc(this,'score-m','0')"> 0<br><span style="font-size:8px">普通</span></button>
-          <button class="sc-btn sc-p1" onclick="selSc(this,'score-m','+1')">+1<br><span style="font-size:8px">良い</span></button>
           <button class="sc-btn sc-p2" onclick="selSc(this,'score-m','+2')">+2<br><span style="font-size:8px">ハイ</span></button>
+          <button class="sc-btn sc-p1" onclick="selSc(this,'score-m','+1')">+1<br><span style="font-size:8px">良い</span></button>
+          <button class="sc-btn sc-0"  onclick="selSc(this,'score-m','0')"> 0<br><span style="font-size:8px">普通</span></button>
+          <button class="sc-btn sc-m1" onclick="selSc(this,'score-m','-1')">−1<br><span style="font-size:8px">重い</span></button>
+          <button class="sc-btn sc-m2" onclick="selSc(this,'score-m','-2')">−2<br><span style="font-size:8px">どん底</span></button>
         </div>
         <input type="hidden" id="score-m">
       </div>
       <div class="field">
-        <label>活力（1=低 ～ 5=高）</label>
+        <label>活力（+2=高 ～ -2=低）</label>
         <div class="en-wrap">
-          <button class="en-btn" onclick="selEn(this,'energy-m','1')">1</button>
-          <button class="en-btn" onclick="selEn(this,'energy-m','2')">2</button>
-          <button class="en-btn" onclick="selEn(this,'energy-m','3')">3</button>
-          <button class="en-btn" onclick="selEn(this,'energy-m','4')">4</button>
-          <button class="en-btn" onclick="selEn(this,'energy-m','5')">5</button>
+          <button class="en-btn" onclick="selEn(this,'energy-m','+2')">+2</button>
+          <button class="en-btn" onclick="selEn(this,'energy-m','+1')">+1</button>
+          <button class="en-btn" onclick="selEn(this,'energy-m','0')"> 0</button>
+          <button class="en-btn" onclick="selEn(this,'energy-m','-1')">-1</button>
+          <button class="en-btn" onclick="selEn(this,'energy-m','-2')">-2</button>
         </div>
         <input type="hidden" id="energy-m">
       </div>
@@ -791,22 +791,22 @@ label{display:block;font-size:9px;color:var(--t2);font-weight:600;letter-spacing
       <div class="field">
         <label>気分スコア（昼）</label>
         <div class="sc-wrap">
-          <button class="sc-btn sc-m2" onclick="selSc(this,'score-n','-2')">−2<br><span style="font-size:8px">どん底</span></button>
-          <button class="sc-btn sc-m1" onclick="selSc(this,'score-n','-1')">−1<br><span style="font-size:8px">重い</span></button>
-          <button class="sc-btn sc-0"  onclick="selSc(this,'score-n','0')"> 0<br><span style="font-size:8px">普通</span></button>
-          <button class="sc-btn sc-p1" onclick="selSc(this,'score-n','+1')">+1<br><span style="font-size:8px">良い</span></button>
           <button class="sc-btn sc-p2" onclick="selSc(this,'score-n','+2')">+2<br><span style="font-size:8px">ハイ</span></button>
+          <button class="sc-btn sc-p1" onclick="selSc(this,'score-n','+1')">+1<br><span style="font-size:8px">良い</span></button>
+          <button class="sc-btn sc-0"  onclick="selSc(this,'score-n','0')"> 0<br><span style="font-size:8px">普通</span></button>
+          <button class="sc-btn sc-m1" onclick="selSc(this,'score-n','-1')">−1<br><span style="font-size:8px">重い</span></button>
+          <button class="sc-btn sc-m2" onclick="selSc(this,'score-n','-2')">−2<br><span style="font-size:8px">どん底</span></button>
         </div>
         <input type="hidden" id="score-n">
       </div>
       <div class="field">
-        <label>活力</label>
+        <label>活力（+2=高 ～ -2=低）</label>
         <div class="en-wrap">
-          <button class="en-btn" onclick="selEn(this,'energy-n','1')">1</button>
-          <button class="en-btn" onclick="selEn(this,'energy-n','2')">2</button>
-          <button class="en-btn" onclick="selEn(this,'energy-n','3')">3</button>
-          <button class="en-btn" onclick="selEn(this,'energy-n','4')">4</button>
-          <button class="en-btn" onclick="selEn(this,'energy-n','5')">5</button>
+          <button class="en-btn" onclick="selEn(this,'energy-n','+2')">+2</button>
+          <button class="en-btn" onclick="selEn(this,'energy-n','+1')">+1</button>
+          <button class="en-btn" onclick="selEn(this,'energy-n','0')"> 0</button>
+          <button class="en-btn" onclick="selEn(this,'energy-n','-1')">-1</button>
+          <button class="en-btn" onclick="selEn(this,'energy-n','-2')">-2</button>
         </div>
         <input type="hidden" id="energy-n">
       </div>
@@ -904,22 +904,22 @@ label{display:block;font-size:9px;color:var(--t2);font-weight:600;letter-spacing
       <div class="field">
         <label>気分スコア（夜）</label>
         <div class="sc-wrap">
-          <button class="sc-btn sc-m2" onclick="selSc(this,'score-e','-2')">−2<br><span style="font-size:8px">どん底</span></button>
-          <button class="sc-btn sc-m1" onclick="selSc(this,'score-e','-1')">−1<br><span style="font-size:8px">重い</span></button>
-          <button class="sc-btn sc-0"  onclick="selSc(this,'score-e','0')"> 0<br><span style="font-size:8px">普通</span></button>
-          <button class="sc-btn sc-p1" onclick="selSc(this,'score-e','+1')">+1<br><span style="font-size:8px">良い</span></button>
           <button class="sc-btn sc-p2" onclick="selSc(this,'score-e','+2')">+2<br><span style="font-size:8px">ハイ</span></button>
+          <button class="sc-btn sc-p1" onclick="selSc(this,'score-e','+1')">+1<br><span style="font-size:8px">良い</span></button>
+          <button class="sc-btn sc-0"  onclick="selSc(this,'score-e','0')"> 0<br><span style="font-size:8px">普通</span></button>
+          <button class="sc-btn sc-m1" onclick="selSc(this,'score-e','-1')">−1<br><span style="font-size:8px">重い</span></button>
+          <button class="sc-btn sc-m2" onclick="selSc(this,'score-e','-2')">−2<br><span style="font-size:8px">どん底</span></button>
         </div>
         <input type="hidden" id="score-e">
       </div>
       <div class="field">
-        <label>活力</label>
+        <label>活力（+2=高 ～ -2=低）</label>
         <div class="en-wrap">
-          <button class="en-btn" onclick="selEn(this,'energy-e','1')">1</button>
-          <button class="en-btn" onclick="selEn(this,'energy-e','2')">2</button>
-          <button class="en-btn" onclick="selEn(this,'energy-e','3')">3</button>
-          <button class="en-btn" onclick="selEn(this,'energy-e','4')">4</button>
-          <button class="en-btn" onclick="selEn(this,'energy-e','5')">5</button>
+          <button class="en-btn" onclick="selEn(this,'energy-e','+2')">+2</button>
+          <button class="en-btn" onclick="selEn(this,'energy-e','+1')">+1</button>
+          <button class="en-btn" onclick="selEn(this,'energy-e','0')"> 0</button>
+          <button class="en-btn" onclick="selEn(this,'energy-e','-1')">-1</button>
+          <button class="en-btn" onclick="selEn(this,'energy-e','-2')">-2</button>
         </div>
         <input type="hidden" id="energy-e">
       </div>
@@ -1355,6 +1355,8 @@ label{display:block;font-size:9px;color:var(--t2);font-weight:600;letter-spacing
       </div>
       <button class="sync-btn" style="margin-top:6px;background:#0a2030;border-color:var(--a3)" onclick="syncAllToSheets()">⬆️ 全データをスプシに保存</button>
       <button class="sync-btn" style="margin-top:5px;border-color:var(--a5);color:var(--a5)" onclick="syncAllFromSheets()">⬇️ スプシから全データを読込</button>
+      <button class="sync-btn" style="margin-top:5px;border-color:var(--ap);color:var(--ap)" onclick="importFeedbackLogs()">🤖 AIフィードバック履歴をスプシから取り込む</button>
+      <div id="feedback-import-status" style="font-size:10px;color:var(--t2);margin-top:4px;text-align:center"></div>
       <button class="sync-btn" style="margin-top:5px;border-color:var(--a4);color:var(--a4)" onclick="syncBetweenApps()">🔄 アプリ間データを同期</button>
       <div id="sync-status" style="font-size:10px;color:var(--t2);margin-top:5px;text-align:center"></div>
     </div>
@@ -1607,7 +1609,7 @@ const HANDA_LAT=34.8939,HANDA_LNG=136.9380;
 const CLIENT_ID='933210373015-34tar1apnfdcb94gl743tqajpp954m0r.apps.googleusercontent.com';
 const SHEET_ID='1ikC4auuAYjrqQKFsygCqXIY2L0Fjye-OoLBGLEwXq5I';
 const GAS_URL='https://script.google.com/macros/s/AKfycbw6mX03apZGfjMbyWzImvAtdqyRZBnPkr5HzM2lm4IlmZuI6vXN5l5hGE5HAyEGANwz0w/exec';
-const APP_VER='4.20';
+const APP_VER='4.22';
 const QUEUE_KEY='gas_queue';
 const ROUTINE_KEY='routines_v2';
 const ROUTINE_LOG_KEY='routine_log_v2';
@@ -3292,6 +3294,68 @@ async function syncAllToSheets(){
 }
 async function syncAllFromSheets(){showToast('スプシから読み込み中...','var(--accent)');}
 async function syncBetweenApps(){showToast('アプリ間同期中...','var(--accent)');}
+
+/**
+ * importFeedbackLogs: Gemini_Log・GPT_Log のデータをlocalStorageのfeedbacksにマージする
+ *   同じ createdAt のフィードバックは重複して追加しない
+ */
+async function importFeedbackLogs(){
+  const statusEl=document.getElementById('feedback-import-status');
+  if(statusEl)statusEl.textContent='スプシから取得中...';
+
+  try{
+    const res=await fetch(GAS_URL,{
+      method:'POST',
+      headers:{'Content-Type':'text/plain'},
+      redirect:'follow',
+      body:JSON.stringify({type:'get_feedback_logs'})
+    });
+    if(!res.ok)throw new Error('HTTP '+res.status);
+
+    const d=await res.json();
+    if(!d.success)throw new Error(d.error_message||'取得失敗');
+
+    const logs=d.data.logs||[];
+    if(!logs.length){
+      if(statusEl)statusEl.textContent='スプシにログデータがありませんでした';
+      showToast('スプシにAIフィードバック履歴がありません','var(--a4)');
+      return;
+    }
+
+    let added=0;
+    let skipped=0;
+
+    for(const log of logs){
+      if(!log.date||!log.text)continue;
+      const rec=loadRec(log.date);
+      if(!rec.feedbacks)rec.feedbacks=[];
+
+      // 同じcreatedAt or 同じテキストが既にあれば重複追加しない
+      const isDup=rec.feedbacks.some(f=>
+        f.createdAt===log.createdAt || f.text===log.text
+      );
+      if(isDup){skipped++;continue;}
+
+      rec.feedbacks.push({
+        model:     log.model,
+        text:      log.text,
+        createdAt: log.createdAt,
+        context:   log.context||''
+      });
+      localStorage.setItem(`rec_${log.date}`,JSON.stringify(rec));
+      added++;
+    }
+
+    const msg=`✅ ${added}件取り込み完了（重複${skipped}件スキップ）`;
+    if(statusEl)statusEl.textContent=msg;
+    showToast('🤖 '+msg,'var(--ap)');
+
+  }catch(e){
+    const msg='❌ 取り込み失敗: '+e.message.slice(0,60);
+    if(statusEl)statusEl.textContent=msg;
+    showError('フィードバック履歴取り込み失敗','NETWORK_ERROR',e.message.slice(0,80));
+  }
+}
 
 // ─── バックアップ ───
 function exportData(){
