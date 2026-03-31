@@ -2523,11 +2523,30 @@ function saveDailyLife(){
   showToast('🏠 生活チェックを保存しました','#404060');
 }
 
+// ─── フィードバックキャッシュユーティリティ ───────────────────
+function getTodayFeedback(model, context){
+  const rec = loadRec(getSelDate());
+  const feedbacks = rec.feedbacks || [];
+  return feedbacks.filter(f => f.model===model && (f.context||'')===context).slice(-1)[0] || null;
+}
+function saveFeedbackWithContext(model, text, context){
+  const k = getSelDate();
+  const rec = loadRec(k);
+  if(!rec.feedbacks) rec.feedbacks = [];
+  rec.feedbacks.push({model, text, context, createdAt: new Date().toISOString()});
+  localStorage.setItem(`rec_${k}`, JSON.stringify(rec));
+}
+
 // ═══════════════════════════════════════════════
 // AIフィードバック（複数モデル対応）
 // ═══════════════════════════════════════════════
 async function sendAIFeedback(context){
   const model=getSelectedAIModel();
+
+  // ── キャッシュチェック：当日・同モデル・同コンテキスト取得済みならスキップ ──
+  const cached = getTodayFeedback(model, context);
+  if(cached){ showAIBanner(model, cached.text); return; }
+
   const r=recData();
   let prompt='';
 
@@ -2591,7 +2610,7 @@ async function sendAIFeedback(context){
       }
     }
     if(text){
-      saveFeedback(model,text);
+      saveFeedbackWithContext(model, text, context);
       showAIBanner(model,text);
     }
   }catch(e){
@@ -4098,13 +4117,27 @@ function scheduleAllReminders(){
 // ═══════════════════════════════════════════════
 // AIフィードバック：ボタン押下で取得・表示・ログ保存
 // ═══════════════════════════════════════════════
-async function requestAIFeedback(){
+async function requestAIFeedback(forceRefresh=false){
   const model = getSelectedAIModel();
   const days = parseInt(document.getElementById('feedback-days')?.value || 1);
   const loadEl = document.getElementById('feedback-loading');
   const dispEl = document.getElementById('feedback-display');
   const metaEl = document.getElementById('feedback-meta');
   const btn = document.getElementById('btn-get-feedback');
+
+  // ── キャッシュチェック（days=1かつ強制再取得でない場合のみ） ──
+  if(!forceRefresh && days === 1){
+    const cached = getTodayFeedback(model, 'record');
+    if(cached){
+      if(dispEl){ dispEl.style.display='block'; dispEl.textContent=cached.text; }
+      const t = new Date(cached.createdAt).toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'});
+      const label = {claude:'Claude',gemini:'Gemini',gpt:'GPT'}[model]||model;
+      if(metaEl){ metaEl.style.display='block'; metaEl.textContent=`${label} · キャッシュ · ${t}取得`; }
+      if(btn){ btn.disabled=false; btn.textContent='🔄 再取得'; btn.onclick=()=>requestAIFeedback(true); }
+      return;
+    }
+  }
+  if(btn){ btn.textContent='取得中...'; }
 
   if(btn) btn.disabled = true;
   if(loadEl) loadEl.style.display = 'block';
@@ -4180,8 +4213,9 @@ ${todaySection}${historySection}`;
       const modelLabel = {claude:'Claude',gemini:'Gemini',gpt:'GPT'}[model]||model;
       if(metaEl){ metaEl.style.display='block'; metaEl.textContent=`${modelLabel} · ${rangeLabel} · ${now}`; }
       showAIBanner(model, text);
-      saveFeedback(model, text);
+      saveFeedbackWithContext(model, text, 'record');
       showToast('✅ フィードバックを取得しました','var(--a3)');
+      if(btn){ btn.textContent='🔄 再取得'; btn.onclick=()=>requestAIFeedback(true); }
     } else {
       if(dispEl){ dispEl.style.display='block'; dispEl.textContent='フィードバックが取得できませんでした。'; }
     }
