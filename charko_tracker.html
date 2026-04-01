@@ -3443,22 +3443,34 @@ function onAILogFile(e, type) {
 }
 
 function parseGeminiLog(html) {
-  const pattern = /送信したメッセージ:\s*(.*?)<br>\s*(\d{4}\/\d{2}\/\d{2})\s+\d{2}:\d{2}:\d{2}\s*JST<br>([\s\S]*?)(?=送信したメッセージ:|$)/g;
+  // 「送信したメッセージ:」で分割してブロック単位で処理
+  const blocks = html.split('送信したメッセージ:');
   const dayMap = {};
-  let m;
-  while ((m = pattern.exec(html)) !== null) {
-    const userRaw = m[1].replace(/<[^>]+>/g, '').trim().slice(0, 200);
-    const date = m[2].replace(/\//g, '-');
-    const aiRaw = m[3].replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim().slice(0, 300);
+  const tsRe = /(\d{4}\/\d{2}\/\d{2})\s+\d{2}:\d{2}:\d{2}\s*JST/;
+  for (let i = 1; i < blocks.length; i++) {
+    const block = blocks[i];
+    const tsM = tsRe.exec(block);
+    if (!tsM) continue;
+    const date = tsM[1].replace(/\//g, '-');
+    // タイムスタンプより前がユーザーメッセージ、後がAI応答
+    const beforeTs = block.slice(0, tsM.index);
+    const afterTs  = block.slice(tsM.index + tsM[0].length);
+    const userRaw = beforeTs.replace(/<br>/gi, ' ').replace(/<[^>]+>/g, '').trim().slice(0, 200);
+    // AI応答は次のブロック区切りまたはサービス情報まで
+    const aiEnd = afterTs.search(/<b>サービス:|content-cell mdl-cell--12-col mdl-typography--caption/);
+    const aiChunk = aiEnd > 0 ? afterTs.slice(0, aiEnd) : afterTs.slice(0, 600);
+    const aiRaw = aiChunk.replace(/<br>/gi, ' ').replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim().slice(0, 300);
     if (!userRaw && !aiRaw) continue;
     const turn = (userRaw ? 'さつき:' + userRaw : '') + (aiRaw ? '\nGemini:' + aiRaw : '');
     if (!dayMap[date]) dayMap[date] = [];
     dayMap[date].push(turn);
   }
-  return Object.entries(dayMap).map(([date, turns]) => ({
+  const result = Object.entries(dayMap).map(([date, turns]) => ({
     date, source: 'gemini',
     text: turns.join('\n---\n').slice(0, 2000)
   }));
+  console.log('[parseGeminiLog] 取得日数:', result.length, '/ 空なし件数:', result.filter(e=>e.text).length);
+  return result;
 }
 
 function parseGPTLog(html) {
@@ -3591,7 +3603,12 @@ async function startAILogImport() {
 
       if (res && res.ok) {
         const d = await res.json();
-        if (d.success && d.data) {
+        if (!d.success) {
+          ailogLog('✗ ' + date + ' [GASエラー]: ' + (d.error_message||d.error_detail||'不明').slice(0,60));
+          ng++;
+        } else if (!d.data) {
+          ailogLog('- ' + date + ': 会話内容なし');
+        } else {
           const rec = loadRec(date);
           const extracted = d.data;
           const fields = ['wakeTime','sleepTime','sleepQuality','wakeup',
@@ -3615,11 +3632,11 @@ async function startAILogImport() {
           if (changed) {
             rec.data.date = date;
             localStorage.setItem('rec_' + date, JSON.stringify(rec));
+            ailogLog('✓ ' + date + (extracted.diary ? ': ' + String(extracted.diary).slice(0,40) : '（フィールドなし）'));
+          } else {
+            ailogLog('- ' + date + ': 抽出フィールドなし');
           }
-          ailogLog('✓ ' + date + (d.data.diary ? ': ' + String(d.data.diary).slice(0,40) : ''));
           ok++;
-        } else {
-          ailogLog('- ' + date + ': データなし');
         }
       } else {
         throw new Error('GAS通信失敗');
