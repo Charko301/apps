@@ -3616,11 +3616,23 @@ async function startAILogImport() {
         gpt:    (dayMap[date].gpt    || '').slice(0, 800)
       };
       console.log('[AIlog] sending', date, 'gemini:', payload.gemini.length, 'gpt:', payload.gpt.length);
-      const res = await gasPostWithRetry(payload, 2, true);
-      console.log('[AIlog] res', date, res?.ok, res?.status);
 
-      if (res && res.ok) {
-        const d = await res.json();
+      // 429時は自動リトライ（最大3回、30秒待ち）
+      let res, d, retries = 0;
+      while (retries < 3) {
+        res = await gasPostWithRetry(payload, 1, true);
+        console.log('[AIlog] res', date, res?.ok, res?.status);
+        if (!res || !res.ok) break;
+        d = await res.clone().json().catch(() => null);
+        if (!d) break;
+        if (d.success || !d.error_message?.includes('429')) break;
+        // 429 → 30秒待ってリトライ
+        retries++;
+        ailogLog('⏳ ' + date + ': レート制限 → ' + (30 * retries) + '秒待機中...');
+        await new Promise(r => setTimeout(r, 30000 * retries));
+      }
+
+      if (res && res.ok && d) {
         if (!d.success) {
           ailogLog('✗ ' + date + ' [GASエラー]: ' + (d.error_message||d.error_detail||'不明').slice(0,60));
           ng++;
@@ -3667,7 +3679,7 @@ async function startAILogImport() {
       console.error('AIlog例外', date, e);
       ng++;
     }
-    await new Promise(r => setTimeout(r, 800));
+    await new Promise(r => setTimeout(r, 6000 + Math.random() * 1000));
   }
 
   ailogProgress(dates.length, dates.length);
