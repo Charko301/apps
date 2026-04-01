@@ -1606,7 +1606,10 @@ label{display:block;font-size:9px;color:var(--t2);font-weight:600;letter-spacing
       <div style="font-size:10px;color:var(--t2)">〜</div>
       <input type="date" id="ailog-to" style="flex:1;font-size:11px;padding:5px 7px">
     </div>
-    <button class="sync-btn" style="border-color:var(--accent);color:var(--accent)" onclick="startAILogImport()" id="btn-ailog-start">🤖 抽出開始</button>
+    <div style="display:flex;gap:6px">
+      <button class="sync-btn" style="flex:2;border-color:var(--accent);color:var(--accent);margin-bottom:0" onclick="startAILogImport()" id="btn-ailog-start">🤖 抽出開始</button>
+      <button class="sync-btn" style="flex:1;border-color:var(--a2);color:var(--a2);margin-bottom:0;display:none" onclick="stopAILogImport()" id="btn-ailog-stop">⏹ 中止</button>
+    </div>
     <div id="ailog-prog-wrap" style="display:none;margin-top:8px">
       <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--t2);margin-bottom:3px">
         <span id="ailog-prog-label">処理中...</span>
@@ -3431,6 +3434,14 @@ async function importFeedbackLogs(){
 // ═══════════════════════════════════════════════
 
 let _ailogFiles = { gemini: null, gpt: null };
+let _ailogStop = false;
+
+function stopAILogImport() {
+  _ailogStop = true;
+  const btn = document.getElementById('btn-ailog-stop');
+  if (btn) btn.textContent = '中止中...';
+  ailogLog('--- 中止リクエスト受付 ---');
+}
 
 function onAILogFile(e, type) {
   const file = e.target.files[0];
@@ -3541,7 +3552,10 @@ async function startAILogImport() {
   if (!_ailogFiles.gemini && !_ailogFiles.gpt) {
     showToast('ファイルを選択してください', 'var(--a2)'); return;
   }
+  _ailogStop = false;
   if (btn) btn.disabled = true;
+  const stopBtn = document.getElementById('btn-ailog-stop');
+  if (stopBtn) stopBtn.style.display = 'block';
   if (logEl) { logEl.style.display = 'block'; logEl.textContent = ''; }
   if (progWrap) progWrap.style.display = 'block';
 
@@ -3591,15 +3605,19 @@ async function startAILogImport() {
 
   let ok = 0, ng = 0;
   for (let i = 0; i < dates.length; i++) {
+    if (_ailogStop) { ailogLog('--- 中止しました ---'); break; }
     const date = dates[i];
     ailogProgress(i, dates.length);
     try {
-      const res = await gasPostWithRetry({
+      const payload = {
         type: 'extract_daily_record',
         date,
-        gemini: dayMap[date].gemini || '',
-        gpt:    dayMap[date].gpt    || ''
-      }, 2, true);
+        gemini: (dayMap[date].gemini || '').slice(0, 800),
+        gpt:    (dayMap[date].gpt    || '').slice(0, 800)
+      };
+      console.log('[AIlog] sending', date, 'gemini:', payload.gemini.length, 'gpt:', payload.gpt.length);
+      const res = await gasPostWithRetry(payload, 2, true);
+      console.log('[AIlog] res', date, res?.ok, res?.status);
 
       if (res && res.ok) {
         const d = await res.json();
@@ -3639,10 +3657,14 @@ async function startAILogImport() {
           ok++;
         }
       } else {
-        throw new Error('GAS通信失敗');
+        const status = res ? res.status : 'fetch失敗';
+        ailogLog('✗ ' + date + ' [HTTP' + status + ']: GAS通信失敗');
+        console.error('GAS通信失敗', date, res?.status, res?.statusText);
+        ng++;
       }
     } catch (e) {
-      ailogLog('✗ ' + date + ': ' + e.message.slice(0, 50));
+      ailogLog('✗ ' + date + ' [例外]: ' + e.message.slice(0, 60));
+      console.error('AIlog例外', date, e);
       ng++;
     }
     await new Promise(r => setTimeout(r, 800));
@@ -3656,6 +3678,7 @@ async function startAILogImport() {
   if (btn) { btn.disabled = false; btn.textContent = '🔄 再実行'; }
   showToast('📥 AIログ取込 ' + summary, 'var(--a3)');
 
+  if (stopBtn) stopBtn.style.display = 'none';
   if (ok > 0) {
     ailogLog('スプシに同期中...');
     await autoSyncToGAS();
