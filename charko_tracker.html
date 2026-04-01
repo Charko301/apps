@@ -3612,12 +3612,12 @@ async function startAILogImport() {
       const payload = {
         type: 'extract_daily_record',
         date,
-        gemini: (dayMap[date].gemini || '').slice(0, 800),
-        gpt:    (dayMap[date].gpt    || '').slice(0, 800)
+        gemini: (dayMap[date].gemini || '').slice(0, 1500),
+        gpt:    (dayMap[date].gpt    || '').slice(0, 1500)
       };
       console.log('[AIlog] sending', date, 'gemini:', payload.gemini.length, 'gpt:', payload.gpt.length);
 
-      // 429時は自動リトライ（最大3回、30秒待ち）
+      // 429時は自動リトライ（最大3回、毎回30秒待ち）
       let res, d, retries = 0;
       while (retries < 3) {
         res = await gasPostWithRetry(payload, 1, true);
@@ -3626,10 +3626,10 @@ async function startAILogImport() {
         d = await res.clone().json().catch(() => null);
         if (!d) break;
         if (d.success || !d.error_message?.includes('429')) break;
-        // 429 → 30秒待ってリトライ
+        // 429 → 30秒待ってリトライ（指数増加しない）
         retries++;
-        ailogLog('⏳ ' + date + ': レート制限 → ' + (30 * retries) + '秒待機中...');
-        await new Promise(r => setTimeout(r, 30000 * retries));
+        ailogLog('⏳ ' + date + ': レート制限 → 30秒待機中... (' + retries + '/3回目)');
+        await new Promise(r => setTimeout(r, 30000));
       }
 
       if (res && res.ok && d) {
@@ -3679,7 +3679,7 @@ async function startAILogImport() {
       console.error('AIlog例外', date, e);
       ng++;
     }
-    await new Promise(r => setTimeout(r, 6000 + Math.random() * 1000));
+    await new Promise(r => setTimeout(r, 9000 + Math.random() * 1000));
   }
 
   ailogProgress(dates.length, dates.length);
