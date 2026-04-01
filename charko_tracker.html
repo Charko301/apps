@@ -1567,6 +1567,59 @@ label{display:block;font-size:9px;color:var(--t2);font-weight:600;letter-spacing
 
 </div><!-- /setting-col-b -->
 </div><!-- /setting-col-wrap -->
+
+<!-- AIログ取込（全幅） -->
+<div class="acc" style="margin-top:6px">
+  <div class="acc-h" onclick="toggleAcc('set-ailog')">
+    <div class="acc-hl">📥 AIログ取込</div>
+    <div class="acc-hr"><span class="acc-sum" id="set-ailog-sum"></span><span class="acc-arrow">▼</span></div>
+  </div>
+  <div class="acc-b" id="set-ailog">
+    <div style="font-size:10px;color:var(--t2);margin-bottom:10px;line-height:1.8">
+      GeminiまたはChatGPTのHTMLエクスポートをアップロードすると、<br>
+      会話から体調データを抽出してApp_Dataに保存します。<br>
+      <b style="color:var(--a4)">※ GASにCLAUDE_API_KEYが設定されている必要があります</b>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+      <div>
+        <div style="font-size:9px;color:var(--t2);margin-bottom:4px;letter-spacing:.06em">GEMINI HTML</div>
+        <div id="dz-gemini" onclick="document.getElementById('fi-gemini').click()"
+          style="border:1px dashed var(--border);border-radius:var(--r2);padding:14px 8px;text-align:center;cursor:pointer;font-size:11px;color:var(--t2)">
+          📂 タップして選択
+        </div>
+        <input type="file" id="fi-gemini" accept=".html" style="display:none" onchange="onAILogFile(event,'gemini')">
+        <div id="fn-gemini" style="font-size:10px;color:var(--a3);margin-top:3px;text-align:center"></div>
+      </div>
+      <div>
+        <div style="font-size:9px;color:var(--t2);margin-bottom:4px;letter-spacing:.06em">CHATGPT HTML</div>
+        <div id="dz-gpt" onclick="document.getElementById('fi-gpt').click()"
+          style="border:1px dashed var(--border);border-radius:var(--r2);padding:14px 8px;text-align:center;cursor:pointer;font-size:11px;color:var(--t2)">
+          📂 タップして選択
+        </div>
+        <input type="file" id="fi-gpt" accept=".html" style="display:none" onchange="onAILogFile(event,'gpt')">
+        <div id="fn-gpt" style="font-size:10px;color:var(--a3);margin-top:3px;text-align:center"></div>
+      </div>
+    </div>
+    <div style="display:flex;gap:6px;align-items:center;margin-bottom:8px">
+      <div style="font-size:10px;color:var(--t2);white-space:nowrap">対象期間:</div>
+      <input type="date" id="ailog-from" style="flex:1;font-size:11px;padding:5px 7px">
+      <div style="font-size:10px;color:var(--t2)">〜</div>
+      <input type="date" id="ailog-to" style="flex:1;font-size:11px;padding:5px 7px">
+    </div>
+    <button class="sync-btn" style="border-color:var(--accent);color:var(--accent)" onclick="startAILogImport()" id="btn-ailog-start">🤖 抽出開始</button>
+    <div id="ailog-prog-wrap" style="display:none;margin-top:8px">
+      <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--t2);margin-bottom:3px">
+        <span id="ailog-prog-label">処理中...</span>
+        <span id="ailog-prog-pct">0%</span>
+      </div>
+      <div style="height:3px;background:var(--border);border-radius:99px;overflow:hidden">
+        <div id="ailog-prog-bar" style="height:100%;background:var(--accent);width:0%;transition:width .3s;border-radius:99px"></div>
+      </div>
+    </div>
+    <div id="ailog-log" style="display:none;margin-top:8px;font-size:10px;color:var(--t2);font-family:'DM Mono',monospace;max-height:150px;overflow-y:auto;background:var(--s2);border-radius:var(--r2);padding:8px;line-height:1.8;white-space:pre-wrap"></div>
+  </div>
+</div>
+
 </div><!-- /panel-settings -->
 
 
@@ -3370,6 +3423,226 @@ async function importFeedbackLogs(){
     const msg='❌ 取り込み失敗: '+e.message.slice(0,60);
     if(statusEl)statusEl.textContent=msg;
     showError('フィードバック履歴取り込み失敗','NETWORK_ERROR',e.message.slice(0,80));
+  }
+}
+
+// ═══════════════════════════════════════════════
+// AIログ取込（Gemini / ChatGPT HTMLエクスポート）
+// ═══════════════════════════════════════════════
+
+let _ailogFiles = { gemini: null, gpt: null };
+
+function onAILogFile(e, type) {
+  const file = e.target.files[0];
+  if (!file) return;
+  _ailogFiles[type] = file;
+  const fnEl = document.getElementById('fn-' + type);
+  const dzEl = document.getElementById('dz-' + type);
+  if (fnEl) fnEl.textContent = '✅ ' + file.name;
+  if (dzEl) dzEl.style.borderColor = 'var(--a3)';
+}
+
+function parseGeminiLog(html) {
+  const pattern = /送信したメッセージ:\s*(.*?)<br>\s*(\d{4}\/\d{2}\/\d{2})\s+\d{2}:\d{2}:\d{2}\s*JST<br>([\s\S]*?)(?=送信したメッセージ:|$)/g;
+  const dayMap = {};
+  let m;
+  while ((m = pattern.exec(html)) !== null) {
+    const userRaw = m[1].replace(/<[^>]+>/g, '').trim().slice(0, 200);
+    const date = m[2].replace(/\//g, '-');
+    const aiRaw = m[3].replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim().slice(0, 300);
+    if (!userRaw && !aiRaw) continue;
+    const turn = (userRaw ? 'さつき:' + userRaw : '') + (aiRaw ? '\nGemini:' + aiRaw : '');
+    if (!dayMap[date]) dayMap[date] = [];
+    dayMap[date].push(turn);
+  }
+  return Object.entries(dayMap).map(([date, turns]) => ({
+    date, source: 'gemini',
+    text: turns.join('\n---\n').slice(0, 2000)
+  }));
+}
+
+function parseGPTLog(html) {
+  const sm = html.match(/var jsonData = (\[[\s\S]*)/);
+  if (!sm) return [];
+  const raw = sm[1];
+  const convs = [];
+  let braceDepth = 0, start = -1;
+  for (let i = 0; i < raw.length; i++) {
+    if (raw[i] === '{') { if (braceDepth === 0) start = i; braceDepth++; }
+    else if (raw[i] === '}') {
+      braceDepth--;
+      if (braceDepth === 0 && start !== -1) {
+        try { convs.push(JSON.parse(raw.slice(start, i + 1))); } catch {}
+        start = -1;
+      }
+    }
+  }
+  const dayMap = {};
+  for (const conv of convs) {
+    const mapping = conv.mapping || {};
+    const msgs = Object.values(mapping)
+      .filter(v => v.message && v.message.create_time)
+      .sort((a, b) => a.message.create_time - b.message.create_time);
+    for (const v of msgs) {
+      const msg = v.message;
+      const role = msg.author?.role;
+      if (!['user', 'assistant'].includes(role)) continue;
+      const parts = msg.content?.parts || [];
+      const text = String(parts[0] || '').trim().slice(0, 200);
+      if (!text || text === '---') continue;
+      const d = new Date(msg.create_time * 1000);
+      const date = d.toLocaleDateString('sv-SE', { timeZone: 'Asia/Tokyo' });
+      const label = role === 'user' ? 'さつき' : 'GPT';
+      if (!dayMap[date]) dayMap[date] = [];
+      dayMap[date].push(label + ':' + text);
+    }
+  }
+  return Object.entries(dayMap).map(([date, turns]) => ({
+    date, source: 'gpt',
+    text: turns.join('\n---\n').slice(0, 2000)
+  }));
+}
+
+function ailogLog(msg) {
+  const el = document.getElementById('ailog-log');
+  if (!el) return;
+  el.style.display = 'block';
+  el.textContent += msg + '\n';
+  el.scrollTop = el.scrollHeight;
+}
+
+function ailogProgress(done, total) {
+  const pct = total ? Math.round(done / total * 100) : 0;
+  const bar = document.getElementById('ailog-prog-bar');
+  const pctEl = document.getElementById('ailog-prog-pct');
+  const label = document.getElementById('ailog-prog-label');
+  if (bar) bar.style.width = pct + '%';
+  if (pctEl) pctEl.textContent = pct + '%';
+  if (label) label.textContent = done + ' / ' + total + ' 処理中...';
+}
+
+async function startAILogImport() {
+  const btn = document.getElementById('btn-ailog-start');
+  const logEl = document.getElementById('ailog-log');
+  const progWrap = document.getElementById('ailog-prog-wrap');
+
+  if (!_ailogFiles.gemini && !_ailogFiles.gpt) {
+    showToast('ファイルを選択してください', 'var(--a2)'); return;
+  }
+  if (btn) btn.disabled = true;
+  if (logEl) { logEl.style.display = 'block'; logEl.textContent = ''; }
+  if (progWrap) progWrap.style.display = 'block';
+
+  const fromDate = document.getElementById('ailog-from')?.value || '';
+  const toDate   = document.getElementById('ailog-to')?.value || '';
+
+  const readFile = (file) => new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = e => res(e.target.result);
+    r.onerror = rej;
+    r.readAsText(file, 'utf-8');
+  });
+
+  const dayMap = {};
+  const merge = (entries) => {
+    for (const e of entries) {
+      if (!dayMap[e.date]) dayMap[e.date] = { gemini: '', gpt: '' };
+      dayMap[e.date][e.source] = e.text;
+    }
+  };
+
+  if (_ailogFiles.gemini) {
+    ailogLog('Geminiログをパース中...');
+    const html = await readFile(_ailogFiles.gemini);
+    const entries = parseGeminiLog(html);
+    merge(entries);
+    ailogLog('Gemini: ' + entries.length + '日分を取得');
+  }
+  if (_ailogFiles.gpt) {
+    ailogLog('GPTログをパース中...');
+    const html = await readFile(_ailogFiles.gpt);
+    const entries = parseGPTLog(html);
+    merge(entries);
+    ailogLog('GPT: ' + entries.length + '日分を取得');
+  }
+
+  let dates = Object.keys(dayMap).sort();
+  if (fromDate) dates = dates.filter(d => d >= fromDate);
+  if (toDate)   dates = dates.filter(d => d <= toDate);
+
+  ailogLog('対象日数: ' + dates.length + '日');
+  if (!dates.length) {
+    if (btn) btn.disabled = false;
+    showToast('対象データがありません', 'var(--a4)');
+    return;
+  }
+
+  let ok = 0, ng = 0;
+  for (let i = 0; i < dates.length; i++) {
+    const date = dates[i];
+    ailogProgress(i, dates.length);
+    try {
+      const res = await gasPostWithRetry({
+        type: 'extract_daily_record',
+        date,
+        gemini: dayMap[date].gemini || '',
+        gpt:    dayMap[date].gpt    || ''
+      }, 2, true);
+
+      if (res && res.ok) {
+        const d = await res.json();
+        if (d.success && d.data) {
+          const rec = loadRec(date);
+          const extracted = d.data;
+          const fields = ['wakeTime','sleepTime','sleepQuality','wakeup',
+            'scoreMorning','scoreNoon','scoreNight','energyMorning',
+            'stateMorning','stateNight','condition','symptoms',
+            'conserta','consertaTime','nightMed','nightMedTime',
+            'attend','attendIn','attendOut','attendReason',
+            'mealMorning','mealNoon','mealNight','period','diary'];
+          let changed = false;
+          if (!rec.data) rec.data = {};
+          for (const f of fields) {
+            if (extracted[f] !== null && extracted[f] !== undefined && extracted[f] !== '' && !rec.data[f]) {
+              rec.data[f] = extracted[f];
+              changed = true;
+            }
+          }
+          if (extracted.kotaWalksCount && !(rec.data.kotaWalks?.length)) {
+            rec.data.kotaWalks = Array.from({length: extracted.kotaWalksCount}, () => ({time:''}));
+            changed = true;
+          }
+          if (changed) {
+            rec.data.date = date;
+            localStorage.setItem('rec_' + date, JSON.stringify(rec));
+          }
+          ailogLog('✓ ' + date + (d.data.diary ? ': ' + String(d.data.diary).slice(0,40) : ''));
+          ok++;
+        } else {
+          ailogLog('- ' + date + ': データなし');
+        }
+      } else {
+        throw new Error('GAS通信失敗');
+      }
+    } catch (e) {
+      ailogLog('✗ ' + date + ': ' + e.message.slice(0, 50));
+      ng++;
+    }
+    await new Promise(r => setTimeout(r, 800));
+  }
+
+  ailogProgress(dates.length, dates.length);
+  const summary = '完了: 成功' + ok + '件 / 失敗' + ng + '件';
+  ailogLog('--- ' + summary + ' ---');
+  const sumEl = document.getElementById('set-ailog-sum');
+  if (sumEl) sumEl.textContent = ok + '件取込済';
+  if (btn) { btn.disabled = false; btn.textContent = '🔄 再実行'; }
+  showToast('📥 AIログ取込 ' + summary, 'var(--a3)');
+
+  if (ok > 0) {
+    ailogLog('スプシに同期中...');
+    await autoSyncToGAS();
+    ailogLog('スプシ同期完了');
   }
 }
 
