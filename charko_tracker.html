@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<meta name="deployed-at" content="2026-04-02T00:27:35.769Z">
+<meta name="deployed-at" content="2026-04-02T00:35:44.812Z">
 <title>日次記録</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -1523,30 +1523,6 @@ label{display:block;font-size:9px;color:var(--t2);font-weight:600;letter-spacing
     </div>
   </div>
 
-  <!-- バージョンアップ手順 -->
-  <div class="acc">
-    <div class="acc-h" onclick="toggleAcc('set-update')">
-      <div class="acc-hl">🔄 バージョンアップ手順</div>
-      <div class="acc-hr"><span class="acc-arrow">▼</span></div>
-    </div>
-    <div class="acc-b" id="set-update" style="border-color:#2a2a3a">
-      <div style="font-size:10px;color:var(--t2);line-height:2">
-        ⚠️ <b style="color:var(--a2)">アップデート前に「⬆️ 全データをスプシに保存」を必ず実行</b><br><br>
-        <b style="color:var(--text)">① 古いファイルを削除</b><br>
-        1. <a href="https://github.com/charko301/apps" target="_blank">github.com/charko301/apps</a> を開く<br>
-        2. charko_tracker.html をクリック<br>
-        3. 右上の「…」→「Delete file」→「Commit changes」<br><br>
-        <b style="color:var(--text)">② 新しいファイルをアップロード</b><br>
-        1. リポジトリのトップに戻る<br>
-        2. 「Add file」→「Upload files」<br>
-        3. Claudeから受け取った <b style="color:var(--a3)">charko_tracker.html</b> をドラッグ＆ドロップ<br>
-        4. 「Commit changes」<br><br>
-        <b style="color:var(--text)">③ 確認</b><br>
-        30秒〜1分待って <a href="https://charko301.github.io/apps/charko_tracker.html" target="_blank">charko301.github.io/apps/charko_tracker.html</a> を開く<br>
-        ※スマホでキャッシュが残る場合はブラウザの設定からキャッシュを削除
-      </div>
-    </div>
-  </div>
 
   <!-- バージョン履歴 -->
   <div class="acc">
@@ -1591,97 +1567,8 @@ label{display:block;font-size:9px;color:var(--t2);font-weight:600;letter-spacing
   </div>
 </div>
 
-<!-- ═══ 🔐 APIキー・PAT 暗号化ボルト（全幅） ═══ -->
-<div class="acc" style="margin-top:6px;border-color:#4a3a7a">
-  <div class="acc-h" onclick="toggleAcc('set-vault')" style="background:rgba(124,106,247,.06)">
-    <div class="acc-hl" style="color:var(--a1)">🔐 APIキー・PAT 管理</div>
-    <div class="acc-hr"><span class="acc-sum" id="vault-status-badge" style="color:var(--a3);font-size:10px"></span><span class="acc-arrow">▼</span></div>
-  </div>
-  <div class="acc-b" id="set-vault" style="border-color:#4a3a7a">
-    <div style="font-size:10px;color:var(--t2);line-height:1.8;margin-bottom:12px">
-      APIキーとPATをパスワードで暗号化してブラウザに保存します。<br>
-      <b style="color:var(--a1)">ブラウザの開発者ツールを開いても平文では見えません（AES-256-GCM暗号化）。</b><br>
-      パスワードを忘れると復号できないので注意してください。
-    </div>
-    <!-- パスワード入力 -->
-    <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px">
-      <input type="password" id="vault-pw" placeholder="マスターパスワード" autocomplete="new-password"
-        style="flex:1;background:var(--s2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:var(--font-mono,monospace);font-size:12px;padding:9px 12px;outline:none">
-      <button onclick="vaultUnlock()" style="background:var(--a1);border:none;border-radius:8px;color:#fff;font-size:12px;padding:9px 16px;cursor:pointer;white-space:nowrap">🔓 解錠</button>
-      <button onclick="vaultLock()" style="background:none;border:1px solid var(--border);border-radius:8px;color:var(--t2);font-size:12px;padding:9px 12px;cursor:pointer">🔒</button>
-    </div>
-    <!-- フィールド群 -->
-    <div id="vault-fields" style="display:none;display:flex;flex-direction:column;gap:8px">
-      <div style="display:grid;grid-template-columns:90px 1fr;align-items:center;gap:6px">
-        <label style="font-size:10px;color:var(--t2);text-align:right">GAS URL</label>
-        <input type="text" id="vf-gas-url" placeholder="https://script.google.com/..." style="background:var(--s2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:var(--font-mono,monospace);font-size:11px;padding:7px 10px;outline:none;width:100%">
-      </div>
-      <div style="display:grid;grid-template-columns:90px 1fr;align-items:center;gap:6px">
-        <label style="font-size:10px;color:var(--t2);text-align:right">Claude Key</label>
-        <input type="password" id="vf-claude" placeholder="sk-ant-api03-..." style="background:var(--s2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:var(--font-mono,monospace);font-size:11px;padding:7px 10px;outline:none;width:100%">
-      </div>
-      <div style="display:grid;grid-template-columns:90px 1fr;align-items:center;gap:6px">
-        <label style="font-size:10px;color:var(--t2);text-align:right">Gemini Key</label>
-        <input type="password" id="vf-gemini" placeholder="AIza..." style="background:var(--s2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:var(--font-mono,monospace);font-size:11px;padding:7px 10px;outline:none;width:100%">
-      </div>
-      <div style="display:grid;grid-template-columns:90px 1fr;align-items:center;gap:6px">
-        <label style="font-size:10px;color:var(--t2);text-align:right">OpenAI Key</label>
-        <input type="password" id="vf-openai" placeholder="sk-..." style="background:var(--s2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:var(--font-mono,monospace);font-size:11px;padding:7px 10px;outline:none;width:100%">
-      </div>
-      <div style="display:grid;grid-template-columns:90px 1fr;align-items:center;gap:6px">
-        <label style="font-size:10px;color:var(--t2);text-align:right">GitHub PAT</label>
-        <input type="password" id="vf-pat" placeholder="ghp_..." style="background:var(--s2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:var(--font-mono,monospace);font-size:11px;padding:7px 10px;outline:none;width:100%">
-      </div>
-      <div style="display:flex;gap:8px;margin-top:4px">
-        <button onclick="vaultSave()" style="flex:1;background:var(--a1);border:none;border-radius:8px;color:#fff;font-size:12px;padding:10px;cursor:pointer">💾 暗号化して保存</button>
-        <button onclick="vaultApply()" style="flex:1;background:none;border:1px solid var(--a3);border-radius:8px;color:var(--a3);font-size:12px;padding:10px;cursor:pointer">⚡ アプリに反映</button>
-        <button onclick="vaultClear()" style="background:none;border:1px solid var(--a2);border-radius:8px;color:var(--a2);font-size:12px;padding:10px 14px;cursor:pointer">🗑</button>
-      </div>
-      <div id="vault-msg" style="font-size:11px;color:var(--a3);min-height:16px;text-align:center"></div>
-    </div>
-  </div>
-</div>
 
-<!-- ═══ 📋 GASコード（参照用） ═══ -->
-<div class="acc" style="margin-top:6px">
-  <div class="acc-h" onclick="toggleAcc('set-gascode')">
-    <div class="acc-hl">📋 GASコード（参照・保存用）</div>
-    <div class="acc-hr"><span class="acc-arrow">▼</span></div>
-  </div>
-  <div class="acc-b" id="set-gascode" style="border-color:#2a2a3a">
-    <div style="font-size:10px;color:var(--t2);margin-bottom:8px;line-height:1.7">
-      Claudeから受け取った最新のGASコードをここに貼り付けて保存できます。<br>
-      GASエディタへのコピペ用として使ってください（内容はlocalStorageに保存）。
-    </div>
-    <textarea id="gascode-ta" rows="10" placeholder="GASコードをここに貼り付け..."
-      style="width:100%;background:var(--s2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:var(--font-mono,monospace);font-size:11px;padding:10px;resize:vertical;outline:none;box-sizing:border-box"></textarea>
-    <div style="display:flex;gap:8px;margin-top:8px">
-      <button onclick="saveGasCode()" style="flex:1;background:var(--s2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:12px;padding:9px;cursor:pointer">💾 保存</button>
-      <button onclick="copyGasCode()" style="flex:1;background:var(--s2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:12px;padding:9px;cursor:pointer">📋 コピー</button>
-    </div>
-    <div id="gascode-msg" style="font-size:11px;color:var(--a3);min-height:14px;margin-top:4px;text-align:center"></div>
-  </div>
-</div>
 
-<!-- ═══ 📖 手順マニュアル（参照用） ═══ -->
-<div class="acc" style="margin-top:6px">
-  <div class="acc-h" onclick="toggleAcc('set-manual')">
-    <div class="acc-hl">📖 手順マニュアル（参照・保存用）</div>
-    <div class="acc-hr"><span class="acc-arrow">▼</span></div>
-  </div>
-  <div class="acc-b" id="set-manual" style="border-color:#2a2a3a">
-    <div style="font-size:10px;color:var(--t2);margin-bottom:8px;line-height:1.7">
-      GASデプロイ手順マニュアルをここに貼り付けて保存できます（localStorageに保存）。
-    </div>
-    <textarea id="manual-ta" rows="10" placeholder="手順マニュアルをここに貼り付け..."
-      style="width:100%;background:var(--s2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:var(--font-mono,monospace);font-size:11px;padding:10px;resize:vertical;outline:none;box-sizing:border-box"></textarea>
-    <div style="display:flex;gap:8px;margin-top:8px">
-      <button onclick="saveManual()" style="flex:1;background:var(--s2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:12px;padding:9px;cursor:pointer">💾 保存</button>
-      <button onclick="copyManual()" style="flex:1;background:var(--s2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:12px;padding:9px;cursor:pointer">📋 コピー</button>
-    </div>
-    <div id="manual-msg" style="font-size:11px;color:var(--a3);min-height:14px;margin-top:4px;text-align:center"></div>
-  </div>
-</div>
 
 <!-- AIログ取込（全幅） -->
 <div class="acc" style="margin-top:6px">
@@ -5085,167 +4972,7 @@ function initResponsiveLayout(){
 }
 document.addEventListener('DOMContentLoaded',initAll);
 
-// ═══════════════════════════════════════════════
-// 🔐 暗号化ボルト（AES-256-GCM + PBKDF2）
-// ═══════════════════════════════════════════════
-const VAULT_KEY = 'charko_vault_v1';
-let _vaultUnlocked = false;
 
-async function _deriveKey(password, salt) {
-  const enc = new TextEncoder();
-  const km = await crypto.subtle.importKey('raw', enc.encode(password), 'PBKDF2', false, ['deriveKey']);
-  return crypto.subtle.deriveKey(
-    { name:'PBKDF2', salt, iterations:200000, hash:'SHA-256' },
-    km, { name:'AES-GCM', length:256 }, false, ['encrypt','decrypt']
-  );
-}
-
-async function _encryptVault(password, data) {
-  const salt = crypto.getRandomValues(new Uint8Array(16));
-  const iv   = crypto.getRandomValues(new Uint8Array(12));
-  const key  = await _deriveKey(password, salt);
-  const ct   = await crypto.subtle.encrypt({ name:'AES-GCM', iv }, key, new TextEncoder().encode(JSON.stringify(data)));
-  return { salt:[...salt], iv:[...iv], ct:[...new Uint8Array(ct)] };
-}
-
-async function _decryptVault(password, blob) {
-  const salt = new Uint8Array(blob.salt);
-  const iv   = new Uint8Array(blob.iv);
-  const ct   = new Uint8Array(blob.ct);
-  const key  = await _deriveKey(password, salt);
-  const plain = await crypto.subtle.decrypt({ name:'AES-GCM', iv }, key, ct);
-  return JSON.parse(new TextDecoder().decode(plain));
-}
-
-function _vaultMsg(msg, color='var(--a3)') {
-  const el = document.getElementById('vault-msg');
-  if (el) { el.textContent = msg; el.style.color = color; }
-}
-
-async function vaultUnlock() {
-  const pw = document.getElementById('vault-pw')?.value;
-  if (!pw) { _vaultMsg('パスワードを入力してください', 'var(--a2)'); return; }
-  const raw = localStorage.getItem(VAULT_KEY);
-  if (!raw) {
-    // 新規：フィールドを空で表示
-    document.getElementById('vault-fields').style.display = 'flex';
-    _vaultUnlocked = true;
-    _vaultMsg('新規ボルト。キーを入力して「暗号化して保存」してください', 'var(--a4)');
-    document.getElementById('vault-status-badge').textContent = '🔓 解錠中';
-    return;
-  }
-  try {
-    const blob = JSON.parse(raw);
-    const data = await _decryptVault(pw, blob);
-    document.getElementById('vf-gas-url').value = data.gasUrl  || '';
-    document.getElementById('vf-claude').value  = data.claudeKey || '';
-    document.getElementById('vf-gemini').value  = data.geminiKey || '';
-    document.getElementById('vf-openai').value  = data.openaiKey || '';
-    document.getElementById('vf-pat').value     = data.pat       || '';
-    document.getElementById('vault-fields').style.display = 'flex';
-    _vaultUnlocked = true;
-    _vaultMsg('✅ 解錠成功', 'var(--a3)');
-    document.getElementById('vault-status-badge').textContent = '🔓 解錠中';
-  } catch(e) {
-    _vaultMsg('❌ パスワードが違うか、データが壊れています', 'var(--a2)');
-  }
-}
-
-async function vaultSave() {
-  if (!_vaultUnlocked) { _vaultMsg('先に解錠してください', 'var(--a2)'); return; }
-  const pw = document.getElementById('vault-pw')?.value;
-  if (!pw) { _vaultMsg('パスワードを入力してください', 'var(--a2)'); return; }
-  const data = {
-    gasUrl:    document.getElementById('vf-gas-url').value.trim(),
-    claudeKey: document.getElementById('vf-claude').value.trim(),
-    geminiKey: document.getElementById('vf-gemini').value.trim(),
-    openaiKey: document.getElementById('vf-openai').value.trim(),
-    pat:       document.getElementById('vf-pat').value.trim()
-  };
-  try {
-    const blob = await _encryptVault(pw, data);
-    localStorage.setItem(VAULT_KEY, JSON.stringify(blob));
-    _vaultMsg('✅ 暗号化して保存しました', 'var(--a3)');
-  } catch(e) {
-    _vaultMsg('❌ 保存に失敗: ' + e.message, 'var(--a2)');
-  }
-}
-
-function vaultApply() {
-  if (!_vaultUnlocked) { _vaultMsg('先に解錠してください', 'var(--a2)'); return; }
-  const url = document.getElementById('vf-gas-url').value.trim();
-  if (url) { GAS_URL = url; }
-  _vaultMsg('⚡ GAS URLをアプリに反映しました（ページ再読込まで有効）', 'var(--a3)');
-}
-
-function vaultLock() {
-  _vaultUnlocked = false;
-  document.getElementById('vault-fields').style.display = 'none';
-  document.getElementById('vault-pw').value = '';
-  document.getElementById('vault-status-badge').textContent = '';
-  _vaultMsg('');
-  // フィールドをクリア
-  ['vf-gas-url','vf-claude','vf-gemini','vf-openai','vf-pat'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.value = '';
-  });
-}
-
-function vaultClear() {
-  if (!confirm('ボルトのデータを削除しますか？（APIキー・PATがすべて消えます）')) return;
-  localStorage.removeItem(VAULT_KEY);
-  vaultLock();
-  _vaultMsg('🗑 削除しました', 'var(--t2)');
-}
-
-// ═══════════════════════════════════════════════
-// 📋 GASコード保存
-// ═══════════════════════════════════════════════
-const GASCODE_KEY = 'charko_gascode';
-const MANUAL_KEY  = 'charko_manual';
-
-function _loadTextArea(taId, storageKey) {
-  const ta = document.getElementById(taId);
-  if (ta) ta.value = localStorage.getItem(storageKey) || '';
-}
-
-function saveGasCode() {
-  const v = document.getElementById('gascode-ta')?.value || '';
-  localStorage.setItem(GASCODE_KEY, v);
-  const el = document.getElementById('gascode-msg');
-  if (el) { el.textContent = '✅ 保存しました'; setTimeout(()=>el.textContent='',2000); }
-}
-
-function copyGasCode() {
-  const v = document.getElementById('gascode-ta')?.value || '';
-  if (!v) return;
-  navigator.clipboard.writeText(v).then(() => {
-    const el = document.getElementById('gascode-msg');
-    if (el) { el.textContent = '📋 コピーしました'; setTimeout(()=>el.textContent='',2000); }
-  });
-}
-
-function saveManual() {
-  const v = document.getElementById('manual-ta')?.value || '';
-  localStorage.setItem(MANUAL_KEY, v);
-  const el = document.getElementById('manual-msg');
-  if (el) { el.textContent = '✅ 保存しました'; setTimeout(()=>el.textContent='',2000); }
-}
-
-function copyManual() {
-  const v = document.getElementById('manual-ta')?.value || '';
-  if (!v) return;
-  navigator.clipboard.writeText(v).then(() => {
-    const el = document.getElementById('manual-msg');
-    if (el) { el.textContent = '📋 コピーしました'; setTimeout(()=>el.textContent='',2000); }
-  });
-}
-
-// DOMContentLoaded時にテキストエリアを復元
-document.addEventListener('DOMContentLoaded', () => {
-  _loadTextArea('gascode-ta', GASCODE_KEY);
-  _loadTextArea('manual-ta',  MANUAL_KEY);
-});
 
 // デプロイ日時をメタタグから読んで表示
 (function() {
