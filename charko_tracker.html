@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<meta name="deployed-at" content="2026-04-02T06:35:39.664Z">
+<meta name="deployed-at" content="2026-04-02T06:53:52.725Z">
 <title>日次記録</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -3614,9 +3614,21 @@ async function startAILogImport() {
       const payload = {
         type: 'extract_daily_record',
         date,
-        gemini: (dayMap[date].gemini || '').slice(0, 1500),
-        gpt:    (dayMap[date].gpt    || '').slice(0, 1500)
+        gemini: (dayMap[date].gemini || '').slice(0, 1000),
+        gpt:    (dayMap[date].gpt    || '').slice(0, 1000)
       };
+      // ── API送信前チェック: localStorageに主要フィールドが揃っていればスキップ ──
+      const existingRec = loadRec(date);
+      const ed = existingRec?.data || {};
+      const CORE_FIELDS = ['wakeTime','scoreMorning','attend','diary'];
+      const filledCount = CORE_FIELDS.filter(f => ed[f] !== undefined && ed[f] !== null && ed[f] !== '').length;
+      if (filledCount >= 3) {
+        ailogLog('⏭ ' + date + ': ローカルデータ充足 → スキップ');
+        ok++;
+        ailogProgress(i + 1, dates.length);
+        continue;
+      }
+
       console.log('[AIlog] sending', date, 'gemini:', payload.gemini.length, 'gpt:', payload.gpt.length);
 
       // 429時は自動リトライ（最大3回、毎回30秒待ち）
