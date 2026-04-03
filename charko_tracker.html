@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<meta name="deployed-at" content="2026-04-03T00:39:47.768Z">
+<meta name="deployed-at" content="2026-04-03T07:13:24.734Z">
 <title>日次記録</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -3385,7 +3385,57 @@ async function syncAllToSheets(){
     showError('スプシ同期失敗','network',e.message.slice(0,80));
   }
 }
-async function syncAllFromSheets(){showToast('スプシから読み込み中...','var(--accent)');}
+async function syncAllFromSheets(){
+  const statusEl = document.getElementById('sync-status');
+  if(statusEl) statusEl.textContent = '読み込み中...';
+  showToast('スプシから読み込み中...','var(--accent)');
+  try{
+    const res = await gasPostWithRetry({type:'get_all_data'}, 3);
+    if(!res || !res.success) throw new Error(res?.error_message || 'GASエラー');
+
+    const rows = res.data?.rows || [];
+    if(!rows.length){
+      if(statusEl) statusEl.textContent = 'スプシにデータがありません';
+      showToast('スプシにデータがありません','var(--a4)');
+      return;
+    }
+
+    let updated = 0, skipped = 0, errors = 0;
+    for(const {date, json} of rows){
+      if(!date) continue;
+      try{
+        // JSONバックアップ列からdataを復元
+        const data = json ? JSON.parse(json) : null;
+        if(!data) { skipped++; continue; }
+
+        // 既存のlocalStorage記録を読み込み（feedbacksを保持するため）
+        const existing = loadRec(date);
+
+        // dataフィールドだけ上書き・feedbacksは既存を維持
+        const merged = {
+          ...existing,
+          data: { ...data, date: date },
+          metadata: { ...existing.metadata, updatedAt: new Date().toISOString(), syncedFromSheets: true }
+        };
+        localStorage.setItem(`rec_${date}`, JSON.stringify(merged));
+        updated++;
+      }catch(e){
+        console.warn('[syncAllFromSheets] ' + date + ':', e);
+        errors++;
+      }
+    }
+
+    const msg = `✅ ${updated}件を読み込みました` + (errors ? `（${errors}件失敗）` : '');
+    if(statusEl) statusEl.textContent = msg;
+    showToast(msg, 'var(--a3)');
+
+    // 現在の選択日を再レンダリング
+    renderAll();
+  }catch(e){
+    if(statusEl) statusEl.textContent = '❌ 読み込み失敗: ' + e.message?.slice(0,50);
+    showError('スプシ読み込み失敗','network', e.message);
+  }
+}
 async function syncBetweenApps(){showToast('アプリ間同期中...','var(--accent)');}
 
 /**
