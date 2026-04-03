@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<meta name="deployed-at" content="2026-04-03T00:07:20.631Z">
+<meta name="deployed-at" content="2026-04-03T00:39:47.768Z">
 <title>日次記録</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -3319,7 +3319,19 @@ function _updateLoginUI(isLoggedIn){
   }
 }
 
-async function autoSignIn(){try{await gSignIn(true);}catch{}}
+async function autoSignIn(){
+  try{
+    await gSignIn(true);
+  }catch{
+    // モバイルSafari等ではITPによりサードパーティCookieがブロックされるため
+    // prompt:'none'の自動ログインは失敗する。スプシ同期はGAS経由なのでログイン不要。
+    const statusEl=document.getElementById('gauth-status');
+    if(statusEl){
+      statusEl.textContent='🔗 スプシ同期はGAS経由で動作中（ログイン不要）';
+      statusEl.style.color='var(--a3)';
+    }
+  }
+}
 
 // [共通化候補] Archiveシートへの手動バックアップ
 async function archiveToSheets(){
@@ -3352,19 +3364,26 @@ async function archiveToSheets(){
   }
 }
 async function syncAllToSheets(){
-  if(!_gapiToken){showToast('先にGoogleログインしてください','var(--a2)');return;}
   const statusEl=document.getElementById('sync-status');
   if(statusEl)statusEl.textContent='同期中...';
-  const keys=[];for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.startsWith('rec_'))keys.push(k);}
+  const keys=[];
+  for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.startsWith('rec_'))keys.push(k);}
+  if(!keys.length){if(statusEl)statusEl.textContent='保存するデータがありません';return;}
   try{
     const rows=keys.map(k=>{const rec=loadRec(k);const r=rec.data||rec;return[k.replace('rec_',''),JSON.stringify(r)];});
-    await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/App_Data!A1:append?valueInputOption=USER_ENTERED`,{
-      method:'POST',headers:{'Authorization':`Bearer ${_gapiToken}`,'Content-Type':'application/json'},
-      body:JSON.stringify({values:rows})
-    });
-    if(statusEl)statusEl.textContent='✅ 同期完了';
-    showToast('✅ スプシに保存しました','var(--a3)');
-  }catch(e){showError('スプシ同期失敗','network',e.message.slice(0,80));}
+    const res=await gasPostWithRetry({type:'sync_to_sheets',rows},3);
+    if(res&&res.success){
+      if(statusEl)statusEl.textContent=`✅ 同期完了（${rows.length}件）`;
+      showToast('✅ スプシに保存しました','var(--a3)');
+    }else{
+      const msg=(res&&res.error_message)||'GASエラー';
+      if(statusEl)statusEl.textContent='❌ 同期失敗: '+msg;
+      showError('スプシ同期失敗','GAS_ERROR',msg);
+    }
+  }catch(e){
+    if(statusEl)statusEl.textContent='❌ 同期失敗';
+    showError('スプシ同期失敗','network',e.message.slice(0,80));
+  }
 }
 async function syncAllFromSheets(){showToast('スプシから読み込み中...','var(--accent)');}
 async function syncBetweenApps(){showToast('アプリ間同期中...','var(--accent)');}
