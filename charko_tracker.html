@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<meta name="deployed-at" content="2026-04-03T07:13:24.734Z">
+<meta name="deployed-at" content="2026-04-04T06:10:21.819Z">
 <title>日次記録</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -3776,8 +3776,13 @@ async function startAILogImport() {
   if (stopBtn) stopBtn.style.display = 'none';
   if (ok > 0) {
     ailogLog('スプシに同期中...');
-    await autoSyncToGAS();
-    ailogLog('スプシ同期完了');
+    let syncOk = 0;
+    for (const d of dates) {
+      const r = await autoSyncToGAS(d);
+      if (r) syncOk++;
+      await new Promise(r2 => setTimeout(r2, 500));
+    }
+    ailogLog('スプシ同期完了: ' + syncOk + '/' + dates.length + '件');
   }
 }
 
