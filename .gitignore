@@ -1,0 +1,60 @@
+# ── Charko Apps .gitignore ──
+
+# ── セキュリティ（絶対にコミットしない）──
+*.env
+.env.local
+.env.*.local
+secrets.json
+vault.json
+
+# APIキー・トークン（コード内に埋め込まれていても除外）
+**/API_KEY*
+**/GITHUB_TOKEN*
+**/PAT*
+
+# ── 一時ファイル ──
+*.tmp
+*.temp
+*.bak
+*.backup
+*~
+
+# ── OS生成ファイル ──
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── エディタ ──
+.vscode/
+.idea/
+*.swp
+*.swo
+*.swn
+
+# ── ビルド・依存関係（将来使うかも）──
+node_modules/
+dist/
+build/
+
+# ── ログ ──
+*.log
+logs/
+
+# ── テスト・デバッグ用ファイル ──
+test_*.html
+debug_*.html
+scratch.html
+
+# ── ローカル設定（個人環境依存）──
+local_config.json
+my_settings.json
+
+# ── GAS clasp設定（個人のプロジェクトID含む）──
+.clasp.json
+
+# ── アップローダーで生成される一時ファイル ──
+upload_temp/
+
+# ── 個人データ（万が一含まれた場合の保護）──
+**/personal_data/
+my_*.json
