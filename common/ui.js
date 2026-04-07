@@ -1,145 +1,305 @@
-// ============================================================
-// common/ui.js — UI共通モジュール
-// トースト通知・ローディング・ボタン制御を一元管理
-// ============================================================
-
-// ── トースト通知（画面下部にポップアップ表示） ────────────────
 /**
- * トースト通知を表示する
- *
- * @param {string} message  - 表示するメッセージ
- * @param {string} type     - 'success'（緑）/ 'error'（赤）/ 'info'（青）
- * @param {number} duration - 表示する時間（ミリ秒）デフォルト3秒
- *
- * 使い方:
- *   showToast('保存しました ✅', 'success');
- *   showToast('エラーが発生しました', 'error');
+ * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ * Charko Apps - 共通UI表示モジュール
+ * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ * 
+ * 【概要】
+ * トースト通知、ローディング表示、エラー表示などの
+ * UI操作を一元管理する共通モジュール。
+ * 
+ * 【主な機能】
+ * - showToast(): 簡易通知表示
+ * - showLoading(): ローディング表示
+ * - hideLoading(): ローディング非表示
+ * - showError(): エラー詳細表示
+ * - confirm(): 確認ダイアログ
+ * 
+ * 【依存】
+ * styles.css のトースト・ローディング用スタイルが必要
+ * 
+ * @version 1.0.0
+ * @date 2026-04-08
  */
-function showToast(message, type = 'success', duration = 3000) {
-  // 既存のトーストがあれば消す
-  const existing = document.getElementById('charko-toast');
-  if (existing) existing.remove();
 
-  const toast = document.createElement('div');
-  toast.id = 'charko-toast';
-  toast.textContent = message;
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// トースト通知
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-  // タイプ別の背景色
-  const colors = {
-    success: '#2d6a4f',
-    error:   '#9b2335',
-    info:    '#1d4e89',
-    warning: '#7a5c00',
+let toastElement = null;
+let toastTimer = null;
+
+/**
+ * トースト通知を表示
+ * 
+ * @param {string} message - 表示メッセージ
+ * @param {string} type - 通知タイプ（'success'|'error'|'info'|'warning'）
+ * @param {number} duration - 表示時間（ミリ秒、デフォルト2000）
+ * 
+ * @example
+ * showToast('保存しました', 'success');
+ * showToast('エラーが発生しました', 'error', 3000);
+ */
+function showToast(message, type = 'info', duration = 2000) {
+  // トースト要素を作成（初回のみ）
+  if (!toastElement) {
+    toastElement = document.createElement('div');
+    toastElement.className = 'toast-ov';
+    toastElement.innerHTML = '<div class="toast-box"></div>';
+    document.body.appendChild(toastElement);
+  }
+
+  // 既存のタイマーをクリア
+  if (toastTimer) {
+    clearTimeout(toastTimer);
+  }
+
+  // タイプに応じたアイコン
+  const icons = {
+    success: '✅',
+    error: '❌',
+    info: 'ℹ️',
+    warning: '⚠️'
   };
+  const icon = icons[type] || icons.info;
 
-  Object.assign(toast.style, {
-    position:       'fixed',
-    bottom:         '80px',      // スマホのナビバーと被らない位置
-    left:           '50%',
-    transform:      'translateX(-50%)',
-    background:     colors[type] || colors.info,
-    color:          '#ffffff',
-    padding:        '12px 20px',
-    borderRadius:   '8px',
-    fontSize:       '14px',
-    fontWeight:     '500',
-    zIndex:         '9999',
-    maxWidth:       '80vw',
-    textAlign:      'center',
-    boxShadow:      '0 4px 12px rgba(0,0,0,0.3)',
-    opacity:        '0',
-    transition:     'opacity 0.2s ease',
-  });
+  // メッセージ設定
+  const box = toastElement.querySelector('.toast-box');
+  box.textContent = `${icon} ${message}`;
 
-  document.body.appendChild(toast);
-  // DOMに追加した直後はtransitionが効かないためわずかに遅らせる
-  requestAnimationFrame(() => { toast.style.opacity = '1'; });
+  // 表示
+  toastElement.classList.add('show');
+  box.style.transform = 'scale(1)';
 
-  setTimeout(() => {
-    toast.style.opacity = '0';
-    setTimeout(() => toast.remove(), 200);
+  // 自動非表示
+  toastTimer = setTimeout(() => {
+    toastElement.classList.remove('show');
+    box.style.transform = 'scale(0.8)';
   }, duration);
 }
 
-// ── ローディング表示 ─────────────────────────────────────────
-/**
- * ローディング状態のON/OFFを切り替える
- * 対象要素にaria-busy属性を付けることでアクセシビリティも確保
- *
- * @param {string}  elementId - ローディングを表示する要素のID
- * @param {boolean} isLoading - trueでON、falseでOFF
- * @param {string}  loadingText - ローディング中に表示するテキスト（省略可）
- *
- * 使い方:
- *   setLoading('save-result', true, '保存中...');
- *   setLoading('save-result', false);
- */
-function setLoading(elementId, isLoading, loadingText = '処理中...') {
-  const el = document.getElementById(elementId);
-  if (!el) return;
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// ローディング表示
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-  if (isLoading) {
-    el.dataset.originalText = el.textContent; // 元のテキストを退避
-    el.textContent = loadingText;
-    el.setAttribute('aria-busy', 'true');
-    el.style.opacity = '0.7';
-  } else {
-    el.textContent = el.dataset.originalText || '';
-    el.removeAttribute('aria-busy');
-    el.style.opacity = '';
-    delete el.dataset.originalText;
+let loadingElement = null;
+
+/**
+ * ローディング表示
+ * 
+ * @param {string} message - ローディングメッセージ（オプション）
+ * 
+ * @example
+ * showLoading('保存中...');
+ * await callGAS(...);
+ * hideLoading();
+ */
+function showLoading(message = '処理中...') {
+  // ローディング要素を作成（初回のみ）
+  if (!loadingElement) {
+    loadingElement = document.createElement('div');
+    loadingElement.className = 'loading-overlay';
+    loadingElement.innerHTML = `
+      <div class="loading-box">
+        <div class="loading-spinner"></div>
+        <div class="loading-text"></div>
+      </div>
+    `;
+    document.body.appendChild(loadingElement);
+  }
+
+  // メッセージ設定
+  const textElement = loadingElement.querySelector('.loading-text');
+  textElement.textContent = message;
+
+  // 表示
+  loadingElement.classList.add('show');
+}
+
+/**
+ * ローディング非表示
+ */
+function hideLoading() {
+  if (loadingElement) {
+    loadingElement.classList.remove('show');
   }
 }
 
-// ── ボタン制御 ───────────────────────────────────────────────
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// エラー表示
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+let errorElement = null;
+
 /**
- * ボタンを無効化/有効化する
- * 通信中に連打されないよう必ずセットで使う
- *
- * @param {string|string[]} buttonIds - ボタンのID（配列でまとめて指定可）
- * @param {boolean}         disabled  - trueで無効化、falseで有効化
- *
- * 使い方:
- *   disableButtons(['save-btn', 'analyze-btn'], true);  // 通信前に無効化
- *   disableButtons(['save-btn', 'analyze-btn'], false); // 通信後に復活
+ * エラー詳細を表示
+ * 
+ * @param {string} errorMessage - ユーザー向けエラーメッセージ
+ * @param {string} errorDetail - デバッグ用詳細（オプション）
+ * @param {Function} onRetry - 再試行ボタンのコールバック（オプション）
+ * 
+ * @example
+ * showError('通信に失敗しました', 'Timeout after 10s', () => {
+ *   // 再試行処理
+ *   retryUpload();
+ * });
  */
-function disableButtons(buttonIds, disabled) {
-  const ids = Array.isArray(buttonIds) ? buttonIds : [buttonIds];
-  ids.forEach(id => {
-    const btn = document.getElementById(id);
-    if (!btn) return;
-    btn.disabled = disabled;
-    btn.style.opacity = disabled ? '0.5' : '';
-    btn.style.cursor  = disabled ? 'not-allowed' : '';
+function showError(errorMessage, errorDetail = '', onRetry = null) {
+  // エラー要素を作成（初回のみ）
+  if (!errorElement) {
+    errorElement = document.createElement('div');
+    errorElement.className = 'error-overlay';
+    errorElement.innerHTML = `
+      <div class="error-box">
+        <div class="error-title"></div>
+        <div class="error-message"></div>
+        <div class="error-detail"></div>
+        <div class="error-actions">
+          <button class="btn-close">閉じる</button>
+          <button class="btn-retry" style="display:none">再試行</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(errorElement);
+
+    // 閉じるボタン
+    errorElement.querySelector('.btn-close').addEventListener('click', () => {
+      errorElement.classList.remove('show');
+    });
+  }
+
+  // 内容設定
+  errorElement.querySelector('.error-title').textContent = 'エラー';
+  errorElement.querySelector('.error-message').textContent = errorMessage;
+  errorElement.querySelector('.error-detail').textContent = 
+    errorDetail ? `詳細: ${errorDetail}` : '';
+
+  // 再試行ボタン
+  const retryBtn = errorElement.querySelector('.btn-retry');
+  if (onRetry) {
+    retryBtn.style.display = '';
+    retryBtn.onclick = () => {
+      errorElement.classList.remove('show');
+      onRetry();
+    };
+  } else {
+    retryBtn.style.display = 'none';
+  }
+
+  // 表示
+  errorElement.classList.add('show');
+
+  // コンソールにもログ
+  console.error('[CharkoUI] エラー表示:', {
+    message: errorMessage,
+    detail: errorDetail
   });
 }
 
-// ── エラー表示 ───────────────────────────────────────────────
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// 確認ダイアログ
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 /**
- * エラーメッセージを画面に表示する
- * 再試行ボタン付きで表示することもできる
- *
- * @param {string}   message     - ユーザー向けエラーメッセージ
- * @param {string}   elementId   - 表示先の要素ID（省略時はトーストで表示）
- * @param {Function} onRetry     - 再試行ボタンを押したときの処理（省略可）
- *
- * 使い方:
- *   showError('保存に失敗しました', 'error-area', () => saveData());
+ * 確認ダイアログを表示（Promise返却）
+ * 
+ * @param {string} message - 確認メッセージ
+ * @param {string} confirmText - 確認ボタンテキスト（デフォルト'OK'）
+ * @param {string} cancelText - キャンセルボタンテキスト（デフォルト'キャンセル'）
+ * 
+ * @returns {Promise<boolean>} ユーザーの選択（true: OK, false: キャンセル）
+ * 
+ * @example
+ * const ok = await confirm('本当に削除しますか？', '削除', 'キャンセル');
+ * if (ok) {
+ *   deleteRecord();
+ * }
  */
-function showError(message, elementId = null, onRetry = null) {
-  if (!elementId) {
-    showToast(message, 'error', 5000);
-    return;
-  }
+function confirm(message, confirmText = 'OK', cancelText = 'キャンセル') {
+  return new Promise((resolve) => {
+    // 確認ダイアログ要素を作成
+    const overlay = document.createElement('div');
+    overlay.className = 'confirm-overlay';
+    overlay.innerHTML = `
+      <div class="confirm-box">
+        <div class="confirm-message"></div>
+        <div class="confirm-actions">
+          <button class="btn-cancel"></button>
+          <button class="btn-confirm"></button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
 
-  const el = document.getElementById(elementId);
-  if (!el) {
-    showToast(message, 'error', 5000);
-    return;
-  }
+    // 内容設定
+    overlay.querySelector('.confirm-message').textContent = message;
+    overlay.querySelector('.btn-confirm').textContent = confirmText;
+    overlay.querySelector('.btn-cancel').textContent = cancelText;
 
-  el.innerHTML = `
-    <span style="color:#cc3333">${message}</span>
-    ${onRetry ? `<button onclick="(${onRetry})()" style="margin-left:8px;font-size:12px;padding:4px 10px;border-radius:4px;border:1px solid #cc3333;background:transparent;color:#cc3333;cursor:pointer">再試行</button>` : ''}
-  `;
+    // イベント設定
+    overlay.querySelector('.btn-confirm').addEventListener('click', () => {
+      overlay.remove();
+      resolve(true);
+    });
+
+    overlay.querySelector('.btn-cancel').addEventListener('click', () => {
+      overlay.remove();
+      resolve(false);
+    });
+
+    // 表示
+    setTimeout(() => overlay.classList.add('show'), 10);
+  });
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// ユーティリティ
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+/**
+ * API呼び出し結果に応じて自動でUI表示
+ * 
+ * @param {Object} result - callGASの返り値
+ * @param {string} successMessage - 成功時のメッセージ
+ * 
+ * @example
+ * const result = await callGAS('tracker', 'save', data);
+ * handleApiResult(result, '保存しました');
+ */
+function handleApiResult(result, successMessage = '完了しました') {
+  if (result.success) {
+    showToast(successMessage, 'success');
+  } else {
+    showError(
+      result.error_message || 'エラーが発生しました',
+      result.error_detail || ''
+    );
+  }
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// エクスポート
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+if (typeof window !== 'undefined') {
+  window.CharkoUI = {
+    showToast,
+    showLoading,
+    hideLoading,
+    showError,
+    confirm,
+    handleApiResult
+  };
+
+  console.log('[CharkoUI] モジュール読み込み完了 v1.0.0');
+}
+
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = {
+    showToast,
+    showLoading,
+    hideLoading,
+    showError,
+    confirm,
+    handleApiResult
+  };
 }
