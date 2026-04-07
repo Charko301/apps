@@ -1,0 +1,180 @@
+/* ============================================================
+   common/styles.css — Charkoシリーズ 共通デザイントークン
+   すべてのアプリはこのファイルを <link> で読み込む
+   ============================================================ */
+
+/* ── CSS変数（デザイントークン） ─────────────────────────────
+   「:root」とはページ全体に適用されるルール。
+   「--変数名」で色・サイズを一元管理できる。
+   ここを変えるとすべてのアプリに反映される。            */
+:root {
+  /* ブランドカラー */
+  --color-primary:     #2d6a4f;   /* メインの緑 */
+  --color-primary-lt:  #d8f3dc;   /* 薄い緑（背景用） */
+  --color-accent:      #1d4e89;   /* アクセントの青 */
+  --color-danger:      #9b2335;   /* エラー赤 */
+  --color-warning:     #e9c46a;   /* 警告の黄 */
+
+  /* 文字色 */
+  --text-primary:   #1a1a1a;
+  --text-secondary: #555555;
+  --text-muted:     #999999;
+
+  /* 背景色 */
+  --bg-page:    #f5f5f0;
+  --bg-card:    #ffffff;
+  --bg-section: #f0f0eb;
+
+  /* ボーダー */
+  --border-color:  #dddddd;
+  --border-radius: 8px;
+
+  /* スペーシング（余白の基準） */
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 40px;
+
+  /* シャドウ */
+  --shadow-sm: 0 1px 4px rgba(0,0,0,0.08);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.12);
+}
+
+/* ── ベースリセット ──────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-size: 16px;
+  -webkit-text-size-adjust: 100%; /* スマホで自動拡大しない */
+}
+
+body {
+  font-family: 'Noto Sans JP', sans-serif;
+  background: var(--bg-page);
+  color: var(--text-primary);
+  line-height: 1.6;
+  min-height: 100vh;
+}
+
+/* ── カードコンポーネント ─────────────────────────────────── */
+.card {
+  background: var(--bg-card);
+  border-radius: var(--border-radius);
+  padding: var(--space-md);
+  box-shadow: var(--shadow-sm);
+  margin-bottom: var(--space-md);
+}
+
+/* ── ボタン ─────────────────────────────────────────────── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 20px;
+  border: none;
+  border-radius: var(--border-radius);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: opacity 0.15s ease, transform 0.1s ease;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent; /* スマホのタップ時の灰色を消す */
+}
+
+.btn:active { transform: scale(0.97); }
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn-primary  { background: var(--color-primary); color: #fff; }
+.btn-accent   { background: var(--color-accent);  color: #fff; }
+.btn-danger   { background: var(--color-danger);  color: #fff; }
+.btn-ghost    { background: transparent; border: 1px solid var(--border-color); color: var(--text-secondary); }
+
+/* ── フォーム ─────────────────────────────────────────────── */
+.input,
+.select,
+.textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  font-size: 16px; /* 16px未満だとiOSがズームインしてしまう */
+  color: var(--text-primary);
+  background: var(--bg-card);
+  appearance: none;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.input:focus,
+.select:focus,
+.textarea:focus {
+  border-color: var(--color-primary);
+}
+
+.textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+label {
+  display: block;
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-bottom: var(--space-xs);
+  font-weight: 500;
+}
+
+/* ── ユーティリティ ──────────────────────────────────────── */
+.text-muted   { color: var(--text-muted); font-size: 13px; }
+.text-danger  { color: var(--color-danger); }
+.text-success { color: var(--color-primary); }
+.mt-sm { margin-top: var(--space-sm); }
+.mt-md { margin-top: var(--space-md); }
+.flex  { display: flex; }
+.flex-center { display: flex; align-items: center; justify-content: center; }
+.gap-sm { gap: var(--space-sm); }
+.gap-md { gap: var(--space-md); }
+.w-full { width: 100%; }
+
+/* ── スマホ向けボトムナビゲーション ─────────────────────────
+   各アプリで bottom-nav のHTMLを使うときに適用される        */
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  background: var(--bg-card);
+  border-top: 1px solid var(--border-color);
+  z-index: 100;
+  padding-bottom: env(safe-area-inset-bottom); /* iPhoneのホームバー対応 */
+}
+
+.bottom-nav-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px 4px;
+  font-size: 11px;
+  color: var(--text-muted);
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  transition: color 0.15s ease;
+}
+
+.bottom-nav-item.active { color: var(--color-primary); font-weight: 500; }
+
+/* ボトムナビがある分の余白 */
+.has-bottom-nav { padding-bottom: 60px; }
