@@ -943,7 +943,8 @@ async function sendToGoogleSheets(logs, gasUrl) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 10000);
   try {
-    const res = await fetch(gasUrl, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ app:'kota', action:'save', logs }), signal:controller.signal });
+    const res = await fetch(gasUrl, { method:'POST', headers: {},
+body: JSON.stringify({ app: 'kota', action: 'save', logs: logs }), signal:controller.signal });
     clearTimeout(timer);
     if (!res.ok) throw new Error('HTTP_' + res.status);
     const data = await res.json();
