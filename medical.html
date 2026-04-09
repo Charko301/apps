@@ -167,7 +167,6 @@ textarea{resize:vertical;min-height:80px;line-height:1.6;}
 
 <div class="tabs">
   <div class="tab active" onclick="switchTab('add')">➕ 記録</div>
-  <div class="tab" onclick="switchTab('prepare')">📋 受診準備</div>
   <div class="tab" onclick="switchTab('history')">📖 履歴</div>
   <div class="tab" onclick="switchTab('settings')">⚙️ 設定</div>
 </div>
@@ -407,15 +406,22 @@ textarea{resize:vertical;min-height:80px;line-height:1.6;}
     </div>
   </div>
 
-</div>
-
-<!-- ========== パネル：受診準備 ========== -->
-<div class="panel" id="panel-prepare">
-  <div class="card">
-    <div class="card-title" id="prep-desc">受診日に先生に伝えることをまとめます。AIがトラッカー・家計簿のデータも参照します。</div>
-    <button class="save-btn" id="prep-btn" onclick="generatePrepMemo()">🤖 受診メモを作成</button>
-    <div id="prep-result" style="margin-top:10px"></div>
+  <!-- アコーディオン4: 受診準備メモ -->
+  <div class="acc">
+    <div class="acc-h" onclick="toggleAcc('acc-prep-memo')">
+      <div class="acc-title" id="prep-acc-title">🤖 AIで受診メモを作成</div>
+      <div class="acc-arrow">▼</div>
+    </div>
+    <div class="acc-b" id="acc-prep-memo">
+      <div class="field">
+        <label>📝 今回絶対に伝えたいこと（任意）</label>
+        <textarea id="prep-user-memo" placeholder="例：薬を飲み忘れることが増えた、眠れない日が続いている、など&#10;ここに書いた内容を優先的にメモに反映します" style="min-height:90px"></textarea>
+      </div>
+      <button class="save-btn" id="prep-btn" onclick="generatePrepMemo()">🤖 受診メモを作成</button>
+      <div id="prep-result" style="margin-top:10px"></div>
+    </div>
   </div>
+
 </div>
 
 <!-- ========== パネル：履歴 ========== -->
@@ -700,7 +706,7 @@ const LS={
 let photoData=[];
 let histFilter='all';
 
-const tabs=['add','prepare','history','settings'];
+const tabs=['add','history','settings'];
 function switchTab(t){
   tabs.forEach(x=>{
     document.getElementById(`panel-${x}`).classList.toggle('active',x===t);
@@ -1024,11 +1030,14 @@ function saveDupixent(){
 // ── 受診準備メモ ──
 async function generatePrepMemo(){
   const el=document.getElementById('prep-result');
+  const btn=document.getElementById('prep-btn');
   el.innerHTML='<div class="summary-loading">🤖 受診メモを作成中...</div>';
+  btn.disabled=true;
 
+  const userMemo=(document.getElementById('prep-user-memo').value||'').trim();
   const visits=LS.visits().sort((a,b)=>b.date.localeCompare(a.date)).slice(0,3);
   const meds=LS.meds().filter(m=>m.active);
-  
+
   const trackerData=[];
   for(let i=13;i>=0;i--){
     const d=new Date();d.setDate(d.getDate()-i);
@@ -1040,8 +1049,8 @@ async function generatePrepMemo(){
     }
   }
 
-  const prompt=`精神科受診の準備メモを作成してください。以下の情報から、医師に伝えるべき重要なポイント（気分の変化、睡眠、服薬状況など）を簡潔にまとめてください。
-
+  const userMemoSection=userMemo?`\n【★今回絶対に伝えたいこと（最優先）】\n${userMemo}\n`:'';
+  const prompt=`精神科受診の準備メモを作成してください。以下の情報から、医師に伝えるべき重要なポイント（気分の変化、睡眠、服薬状況など）を簡潔にまとめてください。${userMemoSection}
 【直近3回の受診記録】
 ${visits.map(v=>`${v.date}：伝えたこと「${(v.told||'').slice(0,100)}」言われたこと「${(v.heard||'').slice(0,100)}」`).join('\n')}
 
@@ -1056,6 +1065,8 @@ ${trackerData.join('\n')}`;
     el.innerHTML=`<div class="summary-card"><div class="summary-text">${text}</div></div>`;
   }catch(e){
     el.innerHTML=`<div style="font-size:11px;color:var(--a4)">取得に失敗しました：${e.message}</div>`;
+  }finally{
+    btn.disabled=false;
   }
 }
 
@@ -1315,11 +1326,11 @@ function renderAISettings(){
 function updateAITexts(){
   const name=getAIProviderName();
   const titleEl=document.getElementById('home-summary-title');
-  const descEl=document.getElementById('prep-desc');
+  const accTitleEl=document.getElementById('prep-acc-title');
   const btnEl=document.getElementById('prep-btn');
   
   if(titleEl)titleEl.textContent=`🤖 ${name}による傾向分析`;
-  if(descEl)descEl.textContent=`受診日に先生に伝えることをまとめます。${name}がトラッカー・家計簿のデータも参照します。`;
+  if(accTitleEl)accTitleEl.textContent=`🤖 ${name}で受診メモを作成`;
   if(btnEl)btnEl.textContent=`🤖 ${name}で受診メモを作成`;
 }
 
