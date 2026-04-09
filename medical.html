@@ -68,7 +68,7 @@ textarea{resize:vertical;min-height:80px;line-height:1.6;}
 .tag.sel-red{border-color:var(--a4);background:#1f0a10;color:var(--a4);}
 
 /* 保存ボタン */
-.save-btn{width:100%;padding:13px;border-radius:10px;border:none;font-size:14px;font-family:'Noto Sans JP',sans-serif;font-weight:500;cursor:pointer;background:var(--a1);color:#1a0030;transition:all .2s;margin-top:6px;}
+.save-btn{width:100%;padding:12px;border-radius:10px;border:none;font-size:14px;font-family:'Noto Sans JP',sans-serif;font-weight:500;cursor:pointer;background:var(--a1);color:#1a0030;transition:all .2s;margin-top:6px;}
 .save-btn:active{transform:scale(.98);}
 .save-btn.sub{background:var(--s2);color:var(--text);border:1px solid var(--border);}
 .save-btn.green{background:var(--a3);color:#001a10;}
@@ -287,8 +287,8 @@ textarea{resize:vertical;min-height:80px;line-height:1.6;}
             <label>💊 処方変更</label>
             <div class="tag-wrap">
               <div class="tag" onclick="setRx(this,'変更なし')">変更なし</div>
-              <div class="tag sel-green" onclick="setRx(this,'増量')">増量</div>
-              <div class="tag sel-red" onclick="setRx(this,'減量')">減量</div>
+              <div class="tag" onclick="setRx(this,'増量')">増量</div>
+              <div class="tag" onclick="setRx(this,'減量')">減量</div>
               <div class="tag" onclick="setRx(this,'追加')">追加</div>
               <div class="tag" onclick="setRx(this,'中止')">中止</div>
             </div>
