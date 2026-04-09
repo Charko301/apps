@@ -3,9 +3,21 @@
 <head>
 <meta charset="UTF-8">
   <link rel="stylesheet" href="./shared/styles.css">
-<title>家計簿 v3.0</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>家計簿 v4.0</title>
+
+<!-- 共通モジュール -->
+<link rel="stylesheet" href="../common/styles.css">
+<script src="../common/api.js"></script>
+<script src="../common/storage.js"></script>
+<script src="../common/ui.js"></script>
+
+<!-- フォント -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+<!-- Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
 /* ─── CSS変数 ─── */
@@ -18,6 +30,23 @@ textarea{resize:vertical;min-height:50px;line-height:1.7;}
 select{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%238888aa'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;padding-right:28px;}
 select option{background:var(--s2);}
 button{cursor:pointer;font-family:'Noto Sans JP',sans-serif;}
+
+// ════════════════════════════════════════════
+// GAS設定
+// ════════════════════════════════════════════
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbzWNNXrsrDkIDDkFJUNVKFLne7WAlkQsDOed-aRJrcEaWeXuJ-YwF2iGor4pYCM1zDkjg/exec'; // TODO: GAS URL を設定
+const CLIENT_ID = '933210373015-34tar1apnfdcb94gl743tqajpp954m0r.apps.googleusercontent.com';
+
+// 共通モジュール初期化
+if (window.CharkoAPI) {
+  CharkoAPI.setGasUrl(GAS_URL);
+  console.log('[Kakeibo] 共通モジュール読込完了');
+}
+
+// ════════════════════════════════════════════
+// 定数（既存コード）
+// ════════════════════════════════════════════
+const APP_VER='3.0'; // ← これは既存のままでOK
 
 /* レイアウト */
 #pc-layout{display:block;}
@@ -38,10 +67,14 @@ button{cursor:pointer;font-family:'Noto Sans JP',sans-serif;}
 #date-sub{font-size:9px;color:var(--t2);margin-top:1px;}
 
 /* タブバー - charko_tracker完全準拠 */
-#tabbar{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:540px;background:var(--s1);border-top:1px solid var(--border);display:flex;z-index:100;padding:4px 0 env(safe-area-inset-bottom,4px);}
-.tab-btn{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:5px 1px;background:none;border:none;color:var(--t2);font-size:8px;font-family:'Noto Sans JP',sans-serif;transition:color .15s;white-space:nowrap;}
-.tab-btn .tab-icon{font-size:16px;line-height:1;}
-.tab-btn.active{color:var(--accent);}
+<div id="tabbar">
+  <button class="tab-btn active" onclick="sw('home')"><div class="tab-icon">🏠</div>Home</button>
+  <button class="tab-btn" onclick="sw('input')"><div class="tab-icon">✏️</div>入力</button>
+  <button class="tab-btn" onclick="sw('monthly')"><div class="tab-icon">📊</div>月次</button>
+  <button class="tab-btn" onclick="sw('stats')"><div class="tab-icon">📈</div>統計</button>
+  <button class="tab-btn" onclick="sw('support')"><div class="tab-icon">💰</div>扶養料</button>
+  <button class="tab-btn" onclick="sw('settings')"><div class="tab-icon">⚙️</div>設定</button>
+</div>
 
 /* アコーディオン */
 .acc{margin-bottom:6px;}
@@ -665,6 +698,134 @@ label{display:block;font-size:9px;color:var(--t2);font-weight:600;letter-spacing
   </div>
 </div>
 
+  <!-- ══════════════════════════════════════════
+  扶養料管理パネル
+════════════════════════════════════════════ -->
+<div class="panel" id="panel-support">
+  
+  <!-- 現在の状況 -->
+  <div class="stat-grid">
+    <div class="stat-card">
+      <div class="stat-val" id="support-fixed-balance" style="color:var(--a3)">-</div>
+      <div class="stat-lbl">定期預金残高</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-val" id="support-remaining-months" style="color:var(--a5)">-</div>
+      <div class="stat-lbl">残り月数</div>
+    </div>
+  </div>
+
+  <!-- アラート -->
+  <div id="support-alert" style="display:none;padding:10px;border-radius:var(--r2);background:var(--s2);border:1px solid var(--a4);margin-bottom:9px;">
+    <div style="font-size:11px;color:var(--a4);font-weight:600;">⚠️ アラート</div>
+    <div id="support-alert-text" style="font-size:11px;color:var(--t3);margin-top:4px;"></div>
+  </div>
+
+  <!-- タイムライングラフ -->
+  <div class="graph-card">
+    <div class="graph-label">📈 残高推移タイムライン</div>
+    <canvas id="support-timeline-chart" style="max-height:200px;"></canvas>
+  </div>
+
+  <!-- 入金記録 -->
+  <div class="acc">
+    <div class="acc-h" onclick="toggleAcc(this)">
+      <div class="acc-hl"><span>💰</span> 入金記録</div>
+      <div class="acc-hr">
+        <span class="acc-arrow">▼</span>
+      </div>
+    </div>
+    <div class="acc-b">
+      <div class="field">
+        <label>日付</label>
+        <input type="date" id="deposit-date" value="">
+      </div>
+      <div class="field">
+        <label>総額（円）</label>
+        <input type="number" id="deposit-amount" placeholder="例: 600000">
+      </div>
+      <div class="field">
+        <label>何ヶ月分か</label>
+        <input type="number" id="deposit-months" placeholder="例: 6" value="6">
+      </div>
+      <div class="field">
+        <label>定期預金へ（円）</label>
+        <input type="number" id="deposit-to-fixed" placeholder="例: 500000">
+      </div>
+      <div class="field">
+        <label>普通預金へ（円）</label>
+        <input type="number" id="deposit-to-ordinary" placeholder="例: 100000">
+      </div>
+      <div class="field">
+        <label>メモ</label>
+        <input type="text" id="deposit-note" placeholder="父からの扶養料">
+      </div>
+      <button class="save-btn btn-income" onclick="saveDeposit()">💰 入金を記録</button>
+    </div>
+  </div>
+
+  <!-- 引出記録 -->
+  <div class="acc">
+    <div class="acc-h" onclick="toggleAcc(this)">
+      <div class="acc-hl"><span>📤</span> 引出記録</div>
+      <div class="acc-hr">
+        <span class="acc-arrow">▼</span>
+      </div>
+    </div>
+    <div class="acc-b">
+      <div class="field">
+        <label>日付</label>
+        <input type="date" id="withdrawal-date" value="">
+      </div>
+      <div class="field">
+        <label>金額（円）</label>
+        <input type="number" id="withdrawal-amount" placeholder="例: 100000">
+      </div>
+      <div class="field">
+        <label>どの月の分か</label>
+        <input type="month" id="withdrawal-for-month" placeholder="YYYY-MM">
+      </div>
+      <div class="field">
+        <label>メモ</label>
+        <input type="text" id="withdrawal-note" placeholder="家賃分">
+      </div>
+      <button class="save-btn btn-expense" onclick="saveWithdrawal()">📤 引出を記録</button>
+    </div>
+  </div>
+
+  <!-- 計画設定 -->
+  <div class="acc">
+    <div class="acc-h" onclick="toggleAcc(this)">
+      <div class="acc-hl"><span>⚙️</span> 計画設定</div>
+      <div class="acc-hr">
+        <span class="acc-arrow">▼</span>
+      </div>
+    </div>
+    <div class="acc-b">
+      <div class="field">
+        <label>月あたり引出額（円）</label>
+        <input type="number" id="plan-monthly-amount" placeholder="例: 100000" value="100000">
+      </div>
+      <div class="field">
+        <label>毎月何日に引出予定</label>
+        <input type="number" id="plan-withdrawal-day" placeholder="例: 25" value="25" min="1" max="31">
+      </div>
+      <div class="field">
+        <label>メモ</label>
+        <input type="text" id="plan-note" placeholder="家賃引き落とし前" value="家賃引き落とし前">
+      </div>
+      <button class="save-btn btn-primary" onclick="savePlan()">💾 計画を保存</button>
+    </div>
+  </div>
+
+  <!-- 履歴リスト -->
+  <div style="margin-top:12px;">
+    <div style="font-size:10px;color:var(--t2);font-weight:600;letter-spacing:.06em;text-transform:uppercase;margin-bottom:7px;">📝 履歴</div>
+    <div id="support-history-list"></div>
+  </div>
+
+</div>
+  
 <!-- ══════════════ 設定 ══════════════ -->
 <div class="panel" id="panel-settings">
 
