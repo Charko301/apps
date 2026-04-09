@@ -11,12 +11,8 @@
 <style>
 /* ─── CSS変数 ─── */
 :root{
-  --bg:#0a0a14;
-  --header-h:90px;--s1:#10101e;--s2:#16162a;--s3:#1e1e34;
-  --border:#2a2a42;--text:#e8e8f4;--t2:#8888aa;--t3:#aaaacc;
-  --accent:#7c6af7;--a2:#f76a6a;--a3:#4af7a0;--a4:#f7c46a;--a5:#6ab8f7;--ap:#c46af7;--ab:#6a8af7;
-  --ng:#f76a6a;--ok:#4af7a0;
-  --r:10px;--r2:8px;--gap:9px;
+ /* styles.css から CSS 変数を継承（ダークモード対応） */
+@import url('./shared/styles.css');
 }
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
 body{background:var(--bg);color:var(--text);font-family:'Noto Sans JP',sans-serif;font-size:13px;min-height:100vh;overscroll-behavior:none;}
