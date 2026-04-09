@@ -7,6 +7,8 @@
 
 <!-- 共通モジュール -->
 <link rel="stylesheet" href="./shared/styles.css">
+<!-- ui.js が confirm() をオーバーライドする前にネイティブ版を保存 -->
+<script>window._nativeConfirm = window.confirm.bind(window);</script>
 <script src="./common/api.js"></script>
 <script src="./common/storage.js"></script>
 <script src="./common/ui.js"></script>
@@ -962,12 +964,13 @@ Googleスプシに直接同期できます（要Googleログイン）。
 // ════════════════════════════════════════════
 // GAS設定（共通モジュール初期化）
 // ════════════════════════════════════════════
-const GAS_URL = 'https://script.google.com/macros/s/AKfycbzWNNXrsrDkIDDkFJUNVKFLne7WAlkQsDOed-aRJrcEaWeXuJ-YwF2iGor4pYCM1zDkjg/exec';
+// NOTE: GAS_URL は api.js でグローバル宣言済みのため別名を使用
+const KAKEIBO_GAS_URL = 'https://script.google.com/macros/s/AKfycbzWNNXrsrDkIDDkFJUNVKFLne7WAlkQsDOed-aRJrcEaWeXuJ-YwF2iGor4pYCM1zDkjg/exec';
 const CLIENT_ID = '933210373015-34tar1apnfdcb94gl743tqajpp954m0r.apps.googleusercontent.com';
 
 // 共通モジュール初期化
 if (window.CharkoAPI) {
-  CharkoAPI.setGasUrl(GAS_URL);
+  CharkoAPI.setGasUrl(KAKEIBO_GAS_URL);
   console.log('[Kakeibo] 共通モジュール読込完了');
 }
 
@@ -1496,7 +1499,7 @@ function toggleTxBody(id){
   const b=document.getElementById(id);if(b)b.classList.toggle('open');
 }
 function deleteTx(id){
-  if(!confirm('この取引を削除しますか？'))return;
+  if(!window._nativeConfirm('この取引を削除しますか？'))return;
   saveTxs(loadTxs().filter(t=>t.id!==id));
   renderHome();renderLog();showToast('🗑 削除しました','var(--a2)');
 }
@@ -1648,7 +1651,7 @@ function addAccount(){
   renderAssets();showToast('✅ 口座を追加しました','var(--a3)');
 }
 function deleteAcct(id){
-  if(!confirm('この口座を削除しますか？'))return;
+  if(!window._nativeConfirm('この口座を削除しますか？'))return;
   saveAccts(loadAccts().filter(a=>a.id!==id));renderAssets();showToast('🗑 削除しました','var(--a2)');
 }
 
