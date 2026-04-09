@@ -2,11 +2,17 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-  <link rel="stylesheet" href="./shared/styles.css">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>受診記録</title>
 <style>
-/* ─── CSS変数 ─── */
-/* ❌ :root { @import ... } は削除 */
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&family=DM+Mono:wght@400;500&display=swap');
+:root{
+  --bg:#09080f;--s1:#100f1c;--s2:#161428;--s3:#1c1a32;--border:#252240;
+  --a1:#c084fc;--a2:#818cf8;--a3:#34d399;--a4:#fb7185;--a5:#fbbf24;
+  --text:#ede9fe;--t2:#7c6fa0;--t3:#a89fd0;
+  --pill-bg:#1c1a32;
+  --dup:#22d3ee;--dup-bg:#0f1a1f;--dup-border:#06b6d433;
+}
 *{box-sizing:border-box;margin:0;padding:0;}
 body{background:var(--bg);color:var(--text);font-family:'Noto Sans JP',sans-serif;font-weight:300;min-height:100vh;padding-bottom:80px;}
 
@@ -18,22 +24,22 @@ header{background:var(--s1);border-bottom:1px solid var(--border);padding:14px 1
 .tab{flex:1;min-width:52px;padding:11px 4px;text-align:center;font-size:10px;cursor:pointer;border-bottom:2px solid transparent;color:var(--t2);white-space:nowrap;transition:all .2s;}
 .tab.active{color:var(--a1);border-bottom-color:var(--a1);}
 
-.panel{display:none;padding:14px;}.panel.active{display:block;}
+.panel{display:none;padding:12px;}.panel.active{display:block;}
 
-.card{background:var(--s1);border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:10px;}
-.card-title{font-size:10px;font-weight:600;letter-spacing:.12em;color:var(--t2);text-transform:uppercase;margin-bottom:10px;}
+.card{background:var(--s1);border:1px solid var(--border);border-radius:14px;padding:12px;margin-bottom:10px;}
+.card-title{font-size:10px;font-weight:600;letter-spacing:.12em;color:var(--t2);text-transform:uppercase;margin-bottom:8px;}
 
 /* アコーディオン */
 .acc{background:var(--s1);border:1px solid var(--border);border-radius:14px;overflow:hidden;margin-bottom:10px;}
-.acc-h{padding:14px 16px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;user-select:none;transition:background .15s;}
+.acc-h{padding:12px 14px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;user-select:none;transition:background .15s;}
 .acc-h:hover{background:var(--s2);}
 .acc-title{font-size:13px;font-weight:500;color:var(--text);}
 .acc-arrow{font-size:12px;color:var(--t2);transition:transform .2s;}
-.acc-b{padding:0 16px 14px;display:none;}
+.acc-b{padding:0 14px 12px;display:none;}
 
 /* フォーム */
-.field{margin-bottom:10px;}
-label{display:block;font-size:11px;color:var(--t2);margin-bottom:5px;}
+.field{margin-bottom:8px;}
+label{display:block;font-size:11px;color:var(--t2);margin-bottom:4px;}
 input[type="text"],input[type="date"],input[type="time"],input[type="number"],select,textarea{
   width:100%;background:var(--s2);border:1px solid var(--border);border-radius:8px;
   color:var(--text);font-family:'Noto Sans JP',sans-serif;font-size:13px;
@@ -42,7 +48,8 @@ input[type="text"],input[type="date"],input[type="time"],input[type="number"],se
 input:focus,select:focus,textarea:focus{border-color:var(--a1);}
 select option{background:var(--s2);}
 textarea{resize:vertical;min-height:80px;line-height:1.6;}
-.form-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.form-row{display:grid;grid-template-columns:1fr;gap:8px;}
+@media(min-width:600px){.form-row{grid-template-columns:1fr 1fr;}}
 
 /* タグ */
 .tag-wrap{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:4px;}
@@ -52,7 +59,7 @@ textarea{resize:vertical;min-height:80px;line-height:1.6;}
 .tag.sel-red{border-color:var(--a4);background:#1f0a10;color:var(--a4);}
 
 /* 保存ボタン */
-.save-btn{width:100%;padding:13px;border-radius:10px;border:none;font-size:14px;font-family:'Noto Sans JP',sans-serif;font-weight:500;cursor:pointer;background:var(--a1);color:#1a0030;transition:all .2s;margin-top:6px;}
+.save-btn{width:100%;padding:11px;border-radius:10px;border:none;font-size:13px;font-family:'Noto Sans JP',sans-serif;font-weight:500;cursor:pointer;background:var(--a1);color:#1a0030;transition:all .2s;margin-top:4px;}
 .save-btn:active{transform:scale(.98);}
 .save-btn.sub{background:var(--s2);color:var(--text);border:1px solid var(--border);}
 .save-btn.green{background:var(--a3);color:#001a10;}
@@ -225,19 +232,18 @@ textarea{resize:vertical;min-height:80px;line-height:1.6;}
         <input type="text" id="v-type" placeholder="または直接入力">
       </div>
 
-      <div class="form-row">
-        <div class="field">
-          <label>医師名</label>
-          <select id="v-doctor">
-            <option value="">選択またはフリー入力</option>
-          </select>
-        </div>
-        <div class="field">
-          <label>医療機関名</label>
-          <select id="v-clinic">
-            <option value="">選択またはフリー入力</option>
-          </select>
-        </div>
+      <div class="field">
+        <label>医師名</label>
+        <select id="v-doctor">
+          <option value="">選択またはフリー入力</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label>医療機関名</label>
+        <select id="v-clinic">
+          <option value="">選択またはフリー入力</option>
+        </select>
       </div>
 
       <div class="field">
