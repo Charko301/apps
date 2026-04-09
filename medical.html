@@ -185,28 +185,19 @@ textarea{resize:vertical;min-height:80px;line-height:1.6;}
     </div>
   </div>
 
-  <!-- アコーディオン2: デュピクセント記録 -->
+   <!-- アコーディオン2: 受診準備メモ -->
   <div class="acc">
-    <div class="acc-h" onclick="toggleAcc('acc-dupixent')">
-      <div class="acc-title">💉 デュピクセント（自己注射）</div>
+    <div class="acc-h" onclick="toggleAcc('acc-prep-memo')">
+      <div class="acc-title" id="prep-acc-title">🤖 AIで受診メモを作成</div>
       <div class="acc-arrow">▼</div>
     </div>
-    <div class="acc-b" id="acc-dupixent">
-      <div id="dup-section"></div>
-      
+    <div class="acc-b" id="acc-prep-memo">
       <div class="field">
-        <label>注射日</label>
-        <input type="date" id="dup-date">
+        <label>📝 今回絶対に伝えたいこと（任意）</label>
+        <textarea id="prep-user-memo" placeholder="例：薬を飲み忘れることが増えた、眠れない日が続いている、など&#10;ここに書いた内容を優先的にメモに反映します" style="min-height:90px"></textarea>
       </div>
-      <div class="field">
-        <label>ロット番号（任意）</label>
-        <input type="text" id="dup-lot" placeholder="例：ABC123">
-      </div>
-      <div class="field">
-        <label>メモ（任意）</label>
-        <textarea id="dup-memo" placeholder="注射部位、副反応など"></textarea>
-      </div>
-      <button class="save-btn cyan" onclick="saveDupixent()">💉 注射記録を保存</button>
+      <button class="save-btn" id="prep-btn" onclick="generatePrepMemo()">🤖 受診メモを作成</button>
+      <div id="prep-result" style="margin-top:10px"></div>
     </div>
   </div>
 
@@ -406,22 +397,31 @@ textarea{resize:vertical;min-height:80px;line-height:1.6;}
     </div>
   </div>
 
-  <!-- アコーディオン4: 受診準備メモ -->
+   <!-- アコーディオン4: デュピクセント記録 -->
   <div class="acc">
-    <div class="acc-h" onclick="toggleAcc('acc-prep-memo')">
-      <div class="acc-title" id="prep-acc-title">🤖 AIで受診メモを作成</div>
+    <div class="acc-h" onclick="toggleAcc('acc-dupixent')">
+      <div class="acc-title">💉 デュピクセント（自己注射）</div>
       <div class="acc-arrow">▼</div>
     </div>
-    <div class="acc-b" id="acc-prep-memo">
+    <div class="acc-b" id="acc-dupixent">
+      <div id="dup-section"></div>
+      
       <div class="field">
-        <label>📝 今回絶対に伝えたいこと（任意）</label>
-        <textarea id="prep-user-memo" placeholder="例：薬を飲み忘れることが増えた、眠れない日が続いている、など&#10;ここに書いた内容を優先的にメモに反映します" style="min-height:90px"></textarea>
+        <label>注射日</label>
+        <input type="date" id="dup-date">
       </div>
-      <button class="save-btn" id="prep-btn" onclick="generatePrepMemo()">🤖 受診メモを作成</button>
-      <div id="prep-result" style="margin-top:10px"></div>
+      <div class="field">
+        <label>ロット番号（任意）</label>
+        <input type="text" id="dup-lot" placeholder="例：ABC123">
+      </div>
+      <div class="field">
+        <label>メモ（任意）</label>
+        <textarea id="dup-memo" placeholder="注射部位、副反応など"></textarea>
+      </div>
+      <button class="save-btn cyan" onclick="saveDupixent()">💉 注射記録を保存</button>
     </div>
   </div>
-
+  
 </div>
 
 <!-- ========== パネル：履歴 ========== -->
