@@ -4,147 +4,16 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>受診記録</title>
+<link rel="stylesheet" href="../common/styles.css">
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&family=DM+Mono:wght@400;500&display=swap');
-:root{
-  --bg:#09080f;--s1:#100f1c;--s2:#161428;--s3:#1c1a32;--border:#252240;
-  --a1:#c084fc;--a2:#818cf8;--a3:#34d399;--a4:#fb7185;--a5:#fbbf24;
-  --text:#ede9fe;--t2:#7c6fa0;--t3:#a89fd0;
-  --pill-bg:#1c1a32;
-  --dup:#22d3ee;--dup-bg:#0f1a1f;--dup-border:#06b6d433;
-}
-*{box-sizing:border-box;margin:0;padding:0;}
-body{background:var(--bg);color:var(--text);font-family:'Noto Sans JP',sans-serif;font-weight:300;min-height:100vh;padding-bottom:80px;}
-
-header{background:var(--s1);border-bottom:1px solid var(--border);padding:14px 16px;position:sticky;top:0;z-index:200;display:flex;align-items:center;justify-content:space-between;}
-.logo{font-size:14px;font-weight:600;color:var(--a1);letter-spacing:.04em;}
-.header-sub{font-size:10px;color:var(--t2);margin-top:2px;display:none;}
-
-.tabs{display:flex;background:var(--s1);border-bottom:1px solid var(--border);position:sticky;top:49px;z-index:199;overflow-x:auto;}
-.tab{flex:1;min-width:52px;padding:11px 4px;text-align:center;font-size:10px;cursor:pointer;border-bottom:2px solid transparent;color:var(--t2);white-space:nowrap;transition:all .2s;}
-.tab.active{color:var(--a1);border-bottom-color:var(--a1);}
-
-.panel{display:none;padding:12px;}.panel.active{display:block;}
-
-.card{background:var(--s1);border:1px solid var(--border);border-radius:14px;padding:12px;margin-bottom:10px;}
-.card-title{font-size:10px;font-weight:600;letter-spacing:.12em;color:var(--t2);text-transform:uppercase;margin-bottom:8px;}
-
-/* アコーディオン */
-.acc{background:var(--s1);border:1px solid var(--border);border-radius:14px;overflow:hidden;margin-bottom:10px;}
-.acc-h{padding:12px 14px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;user-select:none;transition:background .15s;}
-.acc-h:hover{background:var(--s2);}
-.acc-title{font-size:13px;font-weight:500;color:var(--text);}
-.acc-arrow{font-size:12px;color:var(--t2);transition:transform .2s;}
-.acc-b{padding:0 14px 12px;display:none;}
-
-/* フォーム */
-.field{margin-bottom:8px;}
-label{display:block;font-size:11px;color:var(--t2);margin-bottom:4px;}
-input[type="text"],input[type="date"],input[type="time"],input[type="number"],select,textarea{
-  width:100%;background:var(--s2);border:1px solid var(--border);border-radius:8px;
-  color:var(--text);font-family:'Noto Sans JP',sans-serif;font-size:13px;
-  padding:9px 11px;outline:none;transition:border-color .2s;
-}
-input:focus,select:focus,textarea:focus{border-color:var(--a1);}
-select option{background:var(--s2);}
-textarea{resize:vertical;min-height:80px;line-height:1.6;}
-.form-row{display:grid;grid-template-columns:1fr;gap:8px;}
-@media(min-width:600px){.form-row{grid-template-columns:1fr 1fr;}}
-
-/* タグ */
-.tag-wrap{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:4px;}
-.tag{padding:5px 11px;border:1px solid var(--border);border-radius:16px;background:var(--s2);color:var(--t2);font-size:11px;cursor:pointer;transition:all .12s;white-space:nowrap;}
-.tag.sel{border-color:var(--a1);background:#1c1030;color:var(--a1);}
-.tag.sel-green{border-color:var(--a3);background:#0a1f14;color:var(--a3);}
-.tag.sel-red{border-color:var(--a4);background:#1f0a10;color:var(--a4);}
-
-/* 保存ボタン */
-.save-btn{width:100%;padding:11px;border-radius:10px;border:none;font-size:13px;font-family:'Noto Sans JP',sans-serif;font-weight:500;cursor:pointer;background:var(--a1);color:#1a0030;transition:all .2s;margin-top:4px;}
-.save-btn:active{transform:scale(.98);}
-.save-btn.sub{background:var(--s2);color:var(--text);border:1px solid var(--border);}
-.save-btn.green{background:var(--a3);color:#001a10;}
-.save-btn.red{background:var(--a4);color:#1a000a;}
-.save-btn.cyan{background:var(--dup);color:#001a1f;}
-
-/* 受診カード */
-.visit-card{background:var(--s1);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:8px;cursor:pointer;transition:border-color .15s;}
-.visit-card:hover{border-color:var(--a2);}
-.visit-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px;}
-.visit-type{font-size:10px;padding:3px 9px;border-radius:10px;font-weight:500;}
-.type-psych{background:#1c1030;color:var(--a1);}
-.type-counsel{background:#0a1030;color:var(--a2);}
-.type-other{background:#1a1010;color:var(--t3);}
-.visit-date{font-family:'DM Mono',monospace;font-size:11px;color:var(--t2);}
-.visit-clinic{font-size:14px;font-weight:500;margin-bottom:2px;color:var(--text);}
-.visit-doctor-sub{font-size:11px;color:var(--t2);margin-bottom:4px;}
-.visit-preview{font-size:11px;color:var(--t3);line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
-.visit-tags{display:flex;gap:4px;flex-wrap:wrap;margin-top:6px;}
-.vtag{font-size:9px;padding:2px 7px;border-radius:8px;background:var(--s2);color:var(--t3);}
-.next-badge{font-size:10px;padding:3px 8px;border-radius:8px;background:#1f1a08;color:var(--a5);border:1px solid #f59e0b44;}
-
-/* 詳細表示 */
-.detail-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:500;display:none;overflow-y:auto;padding:16px;}
-.detail-overlay.show{display:block;}
-.detail-card{background:var(--s1);border:1px solid var(--border);border-radius:16px;padding:18px;max-width:600px;margin:0 auto;}
-.detail-section{margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid var(--border);}
-.detail-section:last-child{border-bottom:none;margin-bottom:0;padding-bottom:0;}
-.detail-label{font-size:10px;color:var(--t2);font-weight:600;letter-spacing:.1em;text-transform:uppercase;margin-bottom:6px;}
-.detail-text{font-size:13px;line-height:1.7;color:var(--text);}
-.detail-close{position:sticky;top:0;background:var(--s1);padding:4px 0 10px;margin-bottom:4px;}
-
-/* AI サマリー */
-.summary-card{background:linear-gradient(135deg,#1c1030 0%,#0a1030 100%);border:1px solid var(--a1)44;border-radius:14px;padding:14px;margin-bottom:10px;}
-.summary-loading{font-size:12px;color:var(--t2);padding:8px 0;}
-.summary-text{font-size:13px;line-height:1.8;color:var(--text);white-space:pre-wrap;}
-
-/* ボイスメモ */
-.voice-btn{width:100%;padding:12px;border-radius:10px;border:1px solid var(--border);background:var(--s2);color:var(--t3);font-size:13px;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:8px;}
-.voice-btn.recording{border-color:var(--a4);color:var(--a4);background:#1f0a10;animation:pulse .8s infinite;}
-@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.6;}}
-.voice-result{background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:10px;font-size:12px;color:var(--t3);margin-top:6px;min-height:40px;line-height:1.6;}
-
-/* 写真 */
-.photo-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:6px;}
-.photo-thumb{aspect-ratio:1;border-radius:8px;object-fit:cover;border:1px solid var(--border);cursor:pointer;width:100%;}
-.photo-add{aspect-ratio:1;border-radius:8px;border:1px dashed var(--border);background:var(--s2);display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--t2);font-size:22px;transition:all .15s;}
-.photo-add:hover{border-color:var(--a1);color:var(--a1);}
-
-/* 次回受診 */
-.next-card{background:#1f1a08;border:1px solid #f59e0b44;border-radius:10px;padding:12px;margin-bottom:8px;}
-.next-date{font-family:'DM Mono',monospace;font-size:15px;font-weight:500;color:var(--a5);}
-.next-info{font-size:11px;color:var(--t3);margin-top:3px;}
-
-/* デュピクセントカード */
-.dup-card{background:var(--dup-bg);border:1px solid var(--dup-border);border-radius:10px;padding:12px;margin-bottom:8px;}
-.dup-date{font-family:'DM Mono',monospace;font-size:15px;font-weight:500;color:var(--dup);}
-.dup-badge-ok{background:#0a1f14;color:var(--a3);border:1px solid var(--a3)44;}
-.dup-badge-soon{background:#1f1a08;color:var(--a5);border:1px solid var(--a5)44;}
-.dup-badge-over{background:#1f0a0a;color:var(--a4);border:1px solid var(--a4)44;}
-.dup-badge-base{font-size:10px;padding:3px 8px;border-radius:8px;}
-
-/* リンクデータ */
-.link-section{background:var(--s2);border-radius:8px;padding:10px;margin-top:8px;}
-.link-row{display:flex;justify-content:space-between;font-size:11px;padding:3px 0;border-bottom:1px solid var(--border);}
-.link-row:last-child{border-bottom:none;}
-
-/* トグルスイッチ */
-.toggle-row{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);}
-.toggle-row:last-child{border-bottom:none;}
-.toggle-label{font-size:12px;color:var(--text);flex:1;padding-right:12px;line-height:1.5;}
-.toggle-sub{font-size:10px;color:var(--t2);display:block;margin-top:2px;}
-.toggle-switch{position:relative;width:44px;height:24px;flex-shrink:0;}
-.toggle-switch input{opacity:0;width:0;height:0;}
-.toggle-slider{position:absolute;inset:0;background:var(--s3);border-radius:12px;cursor:pointer;transition:.2s;border:1px solid var(--border);}
-.toggle-slider:before{content:'';position:absolute;width:18px;height:18px;left:2px;top:2px;background:var(--t2);border-radius:50%;transition:.2s;}
-.toggle-switch input:checked+.toggle-slider{background:#1c1030;border-color:var(--a1);}
-.toggle-switch input:checked+.toggle-slider:before{transform:translateX(20px);background:var(--a1);}
-
-/* GASコード */
-.gas-code{background:#0a0a14;border:1px solid var(--border);border-radius:8px;padding:12px;font-family:'DM Mono',monospace;font-size:10px;color:var(--t3);line-height:1.7;overflow-x:auto;white-space:pre;margin-top:8px;}
-
-.no-data{text-align:center;color:var(--t2);font-size:12px;padding:24px 0;}
-.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--a1);color:#1a0030;padding:9px 18px;border-radius:18px;font-size:12px;opacity:0;transition:all .3s;z-index:999;pointer-events:none;}
-.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+  /* 医療アプリ独自のカラー定義のみ残す */
+  :root{
+    --bg:#09080f;--s1:#100f1c;--s2:#161428;--s3:#1c1a32;--border:#252240;
+    --a1:#c084fc;--a2:#818cf8;--a3:#34d399;--a4:#fb7185;--a5:#fbbf24;
+    --text:#ede9fe;--t2:#7c6fa0;--t3:#a89fd0;
+    --pill-bg:#1c1a32;
+    --dup:#22d3ee;--dup-bg:#0f1a1f;--dup-border:#06b6d433;
+  }
 </style>
 </head>
 <body>
