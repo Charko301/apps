@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8"> 
- <link rel="stylesheet" href="../shared/styles.css">
+ <link rel="stylesheet" href="./shared/styles.css">
 <meta name="deployed-at" content="(未デプロイ)">
 <title>日次記録</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -10,10 +10,7 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
 /* ─── CSS変数 ─── */
-:root{
- /* styles.css から CSS 変数を継承（ダークモード対応） */
-@import url('./shared/styles.css');
-}
+
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
 body{background:var(--bg);color:var(--text);font-family:'Noto Sans JP',sans-serif;font-size:13px;min-height:100vh;overscroll-behavior:none;}
 input,textarea,select{background:var(--s2);border:1px solid var(--border);border-radius:var(--r2);color:var(--text);font-family:'Noto Sans JP',sans-serif;font-size:12px;padding:7px 10px;outline:none;width:100%;transition:border-color .15s;}
