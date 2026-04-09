@@ -22,14 +22,6 @@
 /* ─── リセット ─── */
 *{box-sizing:border-box;margin:0;padding:0;}
 body{background:var(--bg);color:var(--text);}
-/* ... CSS のみ ... */
-</style>
-
-// ════════════════════════════════════════════
-// 定数（既存コード）
-// ════════════════════════════════════════════
-const APP_VER='3.0'; // ← これは既存のままでOK
-
 /* レイアウト */
 #pc-layout{display:block;}
 #app{max-width:540px;margin:0 auto;padding-bottom:80px;}
@@ -48,15 +40,7 @@ const APP_VER='3.0'; // ← これは既存のままでOK
 #date-main{font-size:15px;font-weight:600;font-family:'DM Mono',monospace;}
 #date-sub{font-size:9px;color:var(--t2);margin-top:1px;}
 
-/* タブバー - charko_tracker完全準拠 */
-<div id="tabbar">
-  <button class="tab-btn active" onclick="sw('home')"><div class="tab-icon">🏠</div>Home</button>
-  <button class="tab-btn" onclick="sw('input')"><div class="tab-icon">✏️</div>入力</button>
-  <button class="tab-btn" onclick="sw('monthly')"><div class="tab-icon">📊</div>月次</button>
-  <button class="tab-btn" onclick="sw('stats')"><div class="tab-icon">📈</div>統計</button>
-  <button class="tab-btn" onclick="sw('support')"><div class="tab-icon">💰</div>扶養料</button>
-  <button class="tab-btn" onclick="sw('settings')"><div class="tab-icon">⚙️</div>設定</button>
-</div>
+/* タブバー */
 
 /* アコーディオン */
 .acc{margin-bottom:6px;}
@@ -216,7 +200,7 @@ label{display:block;font-size:9px;color:var(--t2);font-weight:600;letter-spacing
 <nav id="sidebar" style="display:none">
   <div id="sidebar-logo">
     <div id="sidebar-title">家計簿 App</div>
-    <div id="sidebar-ver">v3.0</div>
+    <div id="sidebar-ver">v4.0</div>
   </div>
   <button class="sidebar-tab" id="stab-home"     onclick="sw('home')">    <span class="sidebar-tab-icon">🏠</span><span class="sidebar-tab-label">ホーム</span></button>
   <button class="sidebar-tab" id="stab-record"   onclick="sw('record')">  <span class="sidebar-tab-icon">✏️</span><span class="sidebar-tab-label">記録</span></button>
@@ -224,6 +208,7 @@ label{display:block;font-size:9px;color:var(--t2);font-weight:600;letter-spacing
   <button class="sidebar-tab" id="stab-graph"    onclick="sw('graph')">   <span class="sidebar-tab-icon">📊</span><span class="sidebar-tab-label">グラフ</span></button>
   <button class="sidebar-tab" id="stab-assets"   onclick="sw('assets')">  <span class="sidebar-tab-icon">💼</span><span class="sidebar-tab-label">資産</span></button>
   <button class="sidebar-tab" id="stab-import"   onclick="sw('import')">  <span class="sidebar-tab-icon">📥</span><span class="sidebar-tab-label">連携</span></button>
+  <button class="sidebar-tab" id="stab-support"  onclick="sw('support')"> <span class="sidebar-tab-icon">💰</span><span class="sidebar-tab-label">扶養料</span></button>
   <button class="sidebar-tab" id="stab-settings" onclick="sw('settings')"><span class="sidebar-tab-icon">⚙️</span><span class="sidebar-tab-label">設定</span></button>
 </nav>
 
@@ -711,13 +696,13 @@ label{display:block;font-size:9px;color:var(--t2);font-weight:600;letter-spacing
 
   <!-- 入金記録 -->
   <div class="acc">
-    <div class="acc-h" onclick="toggleAcc(this)">
+    <div class="acc-h" onclick="toggleAcc('acc-support-deposit')">
       <div class="acc-hl"><span>💰</span> 入金記録</div>
       <div class="acc-hr">
         <span class="acc-arrow">▼</span>
       </div>
     </div>
-    <div class="acc-b">
+    <div class="acc-b" id="acc-support-deposit">
       <div class="field">
         <label>日付</label>
         <input type="date" id="deposit-date" value="">
@@ -748,13 +733,13 @@ label{display:block;font-size:9px;color:var(--t2);font-weight:600;letter-spacing
 
   <!-- 引出記録 -->
   <div class="acc">
-    <div class="acc-h" onclick="toggleAcc(this)">
+    <div class="acc-h" onclick="toggleAcc('acc-support-withdraw')">
       <div class="acc-hl"><span>📤</span> 引出記録</div>
       <div class="acc-hr">
         <span class="acc-arrow">▼</span>
       </div>
     </div>
-    <div class="acc-b">
+    <div class="acc-b" id="acc-support-withdraw">
       <div class="field">
         <label>日付</label>
         <input type="date" id="withdrawal-date" value="">
@@ -777,13 +762,13 @@ label{display:block;font-size:9px;color:var(--t2);font-weight:600;letter-spacing
 
   <!-- 計画設定 -->
   <div class="acc">
-    <div class="acc-h" onclick="toggleAcc(this)">
+    <div class="acc-h" onclick="toggleAcc('acc-support-plan')">
       <div class="acc-hl"><span>⚙️</span> 計画設定</div>
       <div class="acc-hr">
         <span class="acc-arrow">▼</span>
       </div>
     </div>
-    <div class="acc-b">
+    <div class="acc-b" id="acc-support-plan">
       <div class="field">
         <label>月あたり引出額（円）</label>
         <input type="number" id="plan-monthly-amount" placeholder="例: 100000" value="100000">
@@ -796,7 +781,7 @@ label{display:block;font-size:9px;color:var(--t2);font-weight:600;letter-spacing
         <label>メモ</label>
         <input type="text" id="plan-note" placeholder="家賃引き落とし前" value="家賃引き落とし前">
       </div>
-      <button class="save-btn btn-primary" onclick="savePlan()">💾 計画を保存</button>
+      <button class="save-btn btn-income" onclick="savePlan()">💾 計画を保存</button>
     </div>
   </div>
 
@@ -939,6 +924,7 @@ Googleスプシに直接同期できます（要Googleログイン）。
   <button class="tab-btn" id="tab-graph"    onclick="sw('graph')">   <span class="tab-icon">📊</span>グラフ</button>
   <button class="tab-btn" id="tab-assets"   onclick="sw('assets')">  <span class="tab-icon">💼</span>資産</button>
   <button class="tab-btn" id="tab-import"   onclick="sw('import')">  <span class="tab-icon">📥</span>連携</button>
+  <button class="tab-btn" id="tab-support"  onclick="sw('support')"> <span class="tab-icon">💰</span>扶養料</button>
   <button class="tab-btn" id="tab-settings" onclick="sw('settings')"><span class="tab-icon">⚙️</span>設定</button>
 </div>
 
@@ -971,7 +957,6 @@ Googleスプシに直接同期できます（要Googleログイン）。
 <div class="toast-ov" id="toast-ov"><div class="toast-box" id="toast-box"></div></div>
 
 <script>
-  <script>
 'use strict';
 
 // ════════════════════════════════════════════
@@ -989,14 +974,10 @@ if (window.CharkoAPI) {
 // ════════════════════════════════════════════
 // 定数（既存コード）
 // ════════════════════════════════════════════
-const APP_VER='4.0';  // ← バージョンアップ
-// ... 以下、既存のコードをそのまま続ける
-'use strict';
 // ════════════════════════════════════════════
 // 定数・設定
 // ════════════════════════════════════════════
-const APP_VER='3.0';
-const CLIENT_ID='933210373015-34tar1apnfdcb94gl743tqajpp954m0r.apps.googleusercontent.com';
+const APP_VER='4.0';
 const SHEET_ID_DEF='1ikC4auuAYjrqQKFsygCqXIY2L0Fjye-OoLBGLEwXq5I';
 const SHEET_NAME_DEF='家計簿';
 const WD=['日','月','火','水','木','金','土'];
@@ -1043,6 +1024,7 @@ const K_PAYEES='kb_payees_v3';
 const K_SCATS='kb_custom_scats_v3';
 const K_SETTINGS='kb_settings_v3';
 const K_BUDGETS='kb_budgets_v3';
+const K_SUPPORT='kb_support_v1';
 
 const DEF_ACCOUNTS=[
   {id:'ufj_s', name:'UFJ 普通口座',balance:0,icon:'🏦',type:'bank'},
@@ -1075,6 +1057,8 @@ const loadSettings=()=>ls(K_SETTINGS,{sheetId:SHEET_ID_DEF,sheetName:SHEET_NAME_
 const saveSettings=(o)=>ss(K_SETTINGS,o);
 const loadBudgets=()=>ls(K_BUDGETS,{});
 const saveBudgets2=(o)=>ss(K_BUDGETS,o);
+const loadSupport=()=>ls(K_SUPPORT,{deposits:[],withdrawals:[],plan:{monthlyAmount:100000,withdrawalDay:25,note:'家賃引き落とし前'}});
+const saveSupport=(o)=>ss(K_SUPPORT,o);
 
 // ════════════════════════════════════════════
 // 日付
@@ -1125,8 +1109,8 @@ function confirmDateInput(el){
 // ════════════════════════════════════════════
 // タブ・アコーディオン
 // ════════════════════════════════════════════
-const PANELS=['home','record','log','graph','assets','import','settings'];
-const TAB_LABELS={home:'🏠 ホーム',record:'✏️ 記録',log:'📋 ログ',graph:'📊 グラフ',assets:'💼 資産',import:'📥 連携',settings:'⚙️ 設定'};
+const PANELS=['home','record','log','graph','assets','import','support','settings'];
+const TAB_LABELS={home:'🏠 ホーム',record:'✏️ 記録',log:'📋 ログ',graph:'📊 グラフ',assets:'💼 資産',import:'📥 連携',support:'💰 扶養料',settings:'⚙️ 設定'};
 
 function sw(tab){
   PANELS.forEach(p=>{
@@ -1142,6 +1126,7 @@ function sw(tab){
   if(tab==='log')renderLog();
   if(tab==='graph')renderGraphs();
   if(tab==='assets')renderAssets();
+  if(tab==='support')renderSupportPanel();
   if(tab==='settings')initSettingsPanel();
   window.scrollTo(0,0);
 }
@@ -2046,6 +2031,121 @@ function importJSON(input){
     }catch{showToast('⚠️ JSONファイルが正しくありません','var(--a2)');}
   };
   reader.readAsText(file);
+}
+
+// ════════════════════════════════════════════
+// 扶養料パネル
+// ════════════════════════════════════════════
+function renderSupportPanel(){
+  const data=loadSupport();
+  const accts=loadAccts();
+  const fixedAcct=accts.find(a=>a.type==='fixed');
+  const balance=fixedAcct?fixedAcct.balance:0;
+  const plan=data.plan||{monthlyAmount:100000,withdrawalDay:25};
+  const remaining=plan.monthlyAmount>0?Math.floor(balance/plan.monthlyAmount):0;
+
+  setEl('support-fixed-balance','¥'+balance.toLocaleString('ja-JP'));
+  setEl('support-remaining-months',remaining+'ヶ月');
+
+  const alertEl=document.getElementById('support-alert');
+  const alertText=document.getElementById('support-alert-text');
+  if(alertEl&&alertText){
+    if(remaining<=3){
+      alertEl.style.display='block';
+      alertText.textContent=`残り${remaining}ヶ月分です。入金が必要な可能性があります。`;
+    }else{alertEl.style.display='none';}
+  }
+
+  // 計画フィールドに値をセット
+  const pma=document.getElementById('plan-monthly-amount');if(pma)pma.value=plan.monthlyAmount||100000;
+  const pwd=document.getElementById('plan-withdrawal-day');if(pwd)pwd.value=plan.withdrawalDay||25;
+  const pn=document.getElementById('plan-note');if(pn)pn.value=plan.note||'家賃引き落とし前';
+
+  renderSupportChart(balance,plan);
+  renderSupportHistory(data);
+}
+function renderSupportChart(currentBalance,plan){
+  const canvas=document.getElementById('support-timeline-chart');if(!canvas)return;
+  destroyChart('supportTl');
+  const labels=[],balData=[];
+  let bal=currentBalance;
+  const now=new Date();
+  labels.push('現在');balData.push(bal);
+  for(let i=1;i<=6;i++){
+    const d=new Date(now.getFullYear(),now.getMonth()+i,1);
+    labels.push(`${d.getMonth()+1}月`);
+    bal=Math.max(0,bal-(plan.monthlyAmount||0));
+    balData.push(bal);
+  }
+  _charts.supportTl=new Chart(canvas,{
+    type:'line',
+    data:{labels,datasets:[{label:'定期預金残高',data:balData,borderColor:'#4af7a0',backgroundColor:'rgba(74,247,160,0.1)',tension:.3,fill:true,pointRadius:3}]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{
+        x:{ticks:{color:'#8888aa',font:{size:9}},grid:{color:'rgba(255,255,255,0.06)'}},
+        y:{ticks:{color:'#8888aa',font:{size:9},callback:v=>`¥${(v/10000).toFixed(0)}万`},grid:{color:'rgba(255,255,255,0.06)'}}
+      }}
+  });
+}
+function renderSupportHistory(data){
+  const el=document.getElementById('support-history-list');if(!el)return;
+  const all=[
+    ...(data.deposits||[]).map(d=>({...d,_t:'deposit'})),
+    ...(data.withdrawals||[]).map(w=>({...w,_t:'withdrawal'})),
+  ].sort((a,b)=>b.date.localeCompare(a.date));
+  if(!all.length){el.innerHTML='<div class="no-data">履歴がありません</div>';return;}
+  el.innerHTML=all.map(item=>item._t==='deposit'
+    ?`<div class="tx-card"><div class="tx-header" style="cursor:default;">
+        <div class="tx-date">${fmtDateDisp(item.date)}</div>
+        <div class="tx-main"><div class="tx-payee">💰 入金</div><div class="tx-sub">${item.note||''}</div></div>
+        <div class="tx-amount in">+¥${(item.amount||0).toLocaleString()}</div>
+      </div></div>`
+    :`<div class="tx-card"><div class="tx-header" style="cursor:default;">
+        <div class="tx-date">${fmtDateDisp(item.date)}</div>
+        <div class="tx-main"><div class="tx-payee">📤 引出</div><div class="tx-sub">${item.note||''} ${item.forMonth||''}</div></div>
+        <div class="tx-amount out">-¥${(item.amount||0).toLocaleString()}</div>
+      </div></div>`
+  ).join('');
+}
+function saveDeposit(){
+  const date=document.getElementById('deposit-date').value||TODAY();
+  const amount=parseFloat(document.getElementById('deposit-amount').value)||0;
+  const months=parseInt(document.getElementById('deposit-months').value)||1;
+  const toFixed=parseFloat(document.getElementById('deposit-to-fixed').value)||0;
+  const toOrdinary=parseFloat(document.getElementById('deposit-to-ordinary').value)||0;
+  const note=document.getElementById('deposit-note').value||'';
+  if(!amount){showToast('金額を入力してください','var(--a2)');return;}
+  const data=loadSupport();
+  data.deposits.push({id:Date.now(),date,amount,months,toFixed,toOrdinary,note,createdAt:new Date().toISOString()});
+  saveSupport(data);
+  if(toFixed>0){const a=loadAccts();const i=a.findIndex(x=>x.type==='fixed');if(i>=0){a[i].balance+=toFixed;saveAccts(a);}}
+  if(toOrdinary>0){const a=loadAccts();const i=a.findIndex(x=>x.type==='bank');if(i>=0){a[i].balance+=toOrdinary;saveAccts(a);}}
+  ['deposit-amount','deposit-to-fixed','deposit-to-ordinary','deposit-note'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+  renderSupportPanel();showToast('✅ 入金を記録しました','var(--a3)');
+}
+function saveWithdrawal(){
+  const date=document.getElementById('withdrawal-date').value||TODAY();
+  const amount=parseFloat(document.getElementById('withdrawal-amount').value)||0;
+  const forMonth=document.getElementById('withdrawal-for-month').value||'';
+  const note=document.getElementById('withdrawal-note').value||'';
+  if(!amount){showToast('金額を入力してください','var(--a2)');return;}
+  const data=loadSupport();
+  data.withdrawals.push({id:Date.now(),date,amount,forMonth,note,createdAt:new Date().toISOString()});
+  saveSupport(data);
+  const a=loadAccts();const i=a.findIndex(x=>x.type==='fixed');
+  if(i>=0){a[i].balance=Math.max(0,a[i].balance-amount);saveAccts(a);}
+  ['withdrawal-amount','withdrawal-for-month','withdrawal-note'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+  renderSupportPanel();showToast('✅ 引出を記録しました','var(--a2)');
+}
+function savePlan(){
+  const monthlyAmount=parseFloat(document.getElementById('plan-monthly-amount').value)||100000;
+  const withdrawalDay=parseInt(document.getElementById('plan-withdrawal-day').value)||25;
+  const note=document.getElementById('plan-note').value||'';
+  const data=loadSupport();
+  data.plan={monthlyAmount,withdrawalDay,note};
+  saveSupport(data);
+  renderSupportPanel();showToast('✅ 計画を保存しました','var(--a3)');
 }
 
 // ════════════════════════════════════════════
