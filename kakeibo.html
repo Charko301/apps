@@ -6,7 +6,7 @@
 <title>家計簿 v4.0</title>
 
 <!-- 共通モジュール -->
-<link rel="stylesheet" href="./common/styles.css">
+<link rel="stylesheet" href="./shared/styles.css">
 <script src="./common/api.js"></script>
 <script src="./common/storage.js"></script>
 <script src="./common/ui.js"></script>
@@ -20,27 +20,10 @@
 
 <style>
 /* ─── リセット ─── */
-*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
-body{background:var(--bg);color:var(--text);font-family:'Noto Sans JP',sans-serif;font-size:13px;min-height:100vh;overscroll-behavior:none;}
-input,textarea,select{background:var(--s2);border:1px solid var(--border);border-radius:var(--r2);color:var(--text);font-family:'Noto Sans JP',sans-serif;font-size:12px;padding:7px 10px;outline:none;width:100%;transition:border-color .15s;}
-input:focus,textarea:focus,select:focus{border-color:var(--accent);}
-textarea{resize:vertical;min-height:50px;line-height:1.7;}
-select{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%238888aa'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;padding-right:28px;}
-select option{background:var(--s2);}
-button{cursor:pointer;font-family:'Noto Sans JP',sans-serif;}
-
-
-// ════════════════════════════════════════════
-// GAS設定
-// ════════════════════════════════════════════
-const GAS_URL = 'https://script.google.com/macros/s/AKfycbzWNNXrsrDkIDDkFJUNVKFLne7WAlkQsDOed-aRJrcEaWeXuJ-YwF2iGor4pYCM1zDkjg/exec'; // TODO: GAS URL を設定
-const CLIENT_ID = '933210373015-34tar1apnfdcb94gl743tqajpp954m0r.apps.googleusercontent.com';
-
-// 共通モジュール初期化
-if (window.CharkoAPI) {
-  CharkoAPI.setGasUrl(GAS_URL);
-  console.log('[Kakeibo] 共通モジュール読込完了');
-}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);}
+/* ... CSS のみ ... */
+</style>
 
 // ════════════════════════════════════════════
 // 定数（既存コード）
