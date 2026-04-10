@@ -340,6 +340,9 @@ if (typeof window !== 'undefined') {
     initAppMeta
   };
 
+  // グローバルにも公開（各アプリから initAppMeta() と直接呼べる）
+  window.initAppMeta = initAppMeta;
+
   console.log('[CharkoUI] モジュール読み込み完了 v1.1.0');
 }
 
