@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<meta name="deployed-at" content="2026-04-10T10:05:05.183Z">
+<meta name="deployed-at" content="2026-04-10T10:23:40.554Z">
 <title>日次記録</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -1671,13 +1671,12 @@ label{display:block;font-size:9px;color:var(--t2);font-weight:600;letter-spacing
 const HANDA_LAT=34.8939,HANDA_LNG=136.9380;
 const CLIENT_ID='933210373015-34tar1apnfdcb94gl743tqajpp954m0r.apps.googleusercontent.com';
 const SHEET_ID='1ikC4auuAYjrqQKFsygCqXIY2L0Fjye-OoLBGLEwXq5I';
-// GAS_URL は api.js 側で let 宣言済みのため、window経由で設定する
+// GAS URLをapi.jsに渡す
 window.CHARKO_GAS_URL = 'https://script.google.com/macros/s/AKfycbzWNNXrsrDkIDDkFJUNVKFLne7WAlkQsDOed-aRJrcEaWeXuJ-YwF2iGor4pYCM1zDkjg/exec';
-// api.js の callGAS / gasPost にも同じURLを渡す
 if(typeof setGasUrl==='function') setGasUrl(window.CHARKO_GAS_URL);
-// tracker内の旧コードとの互換用
+// 旧コード互換用（gasPostWithRetry等が直接参照）
 var GAS_URL = window.CHARKO_GAS_URL;
-const APP_VER='4.23';
+const APP_VER='4.24';
 const QUEUE_KEY='gas_queue';
 const ROUTINE_KEY='routines_v2';
 const ROUTINE_LOG_KEY='routine_log_v2';
