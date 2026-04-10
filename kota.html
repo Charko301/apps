@@ -2,13 +2,22 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-  <link rel="stylesheet" href="./shared/styles.css">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <title>幸太ログ</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<!-- Charko 共通モジュール -->
+<link rel="stylesheet" href="../common/styles.css">
+<script src="../common/api.js"></script>
+<script src="../common/ui.js"></script>
+<script src="../common/storage.js"></script>
 <style>
-/* ─── CSS変数 ─── */
-/* ❌ :root { @import ... } は削除 */
+:root{
+  --bg:#0d1117;--s1:#161b22;--s2:#1c2128;--s3:#21262d;
+  --border:#30363d;--text:#e6edf3;--t2:#8b949e;--t3:#c9d1d9;
+  --accent:#f78166;--a2:#ffa657;--a3:#7ee787;--a4:#79c0ff;--a5:#d2a8ff;
+  --r:10px;--r2:7px;
+}
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
 body{background:var(--bg);color:var(--text);font-family:'Noto Sans JP',sans-serif;font-size:14px;min-height:100vh;overscroll-behavior:none;}
 button{cursor:pointer;font-family:'Noto Sans JP',sans-serif;}
@@ -117,6 +126,7 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent);}
 <div id="header">
   <div>
     <div id="header-title">🐾 <span>幸太</span>ログ</div>
+    <div id="app-version" style="font-size:9px;color:var(--t2);margin-top:1px;font-family:'DM Mono',monospace;"></div>
     <div id="header-sub">未同期</div>
   </div>
   <button id="sync-badge" onclick="syncToGAS()">↑ スプシ保存</button>
@@ -614,9 +624,15 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent);}
       <button class="set-btn red" onclick="clearAll()">🗑 全データ削除</button>
     </div>
   </div>
+  <div class="acc">
+    <div class="acc-h" onclick="toggleAcc('acc-versions')">
+      <div class="acc-hl">📋 バージョン履歴</div>
+      <div class="acc-hr"><span class="acc-arrow">▼</span></div>
+    </div>
+    <div class="acc-b" id="acc-versions"></div>
+  </div>
 </div>
 
-<div id="toast"></div>
 
 <script>
 const LS_KEY      = 'kota_logs_v3';
@@ -630,6 +646,14 @@ let charts        = {};
 
 // ── 初期化 ──────────────────────────────────
 window.addEventListener('DOMContentLoaded', () => {
+  // ── バージョン情報を表示（ui.js の initAppMeta を使用）
+  initAppMeta({
+    version: 'v1.1',
+    history: [
+      { v: 'v1.1', date: '2026/04/10', note: 'スプシ保存を実装（saveKotaLogs）、ui.js導入' },
+      { v: 'v1.0', date: '2026/04/08', note: '初版リリース' },
+    ]
+  });
   const t = today();
   // 全カテゴリの日付欄に今日をセット
   CATS.forEach(c => {
@@ -967,13 +991,7 @@ function clearAll() {
 }
 
 // ── トースト ─────────────────────────────────
-function showToast(msg, type = 'success') {
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.style.borderColor = type === 'error' ? '#f85149' : 'var(--border)';
-  t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), 2500);
-}
+// showToast は ../common/ui.js で定義済み（ui.js を読み込んでいるので不要）
 </script>
 </body>
 </html>
