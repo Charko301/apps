@@ -2,278 +2,225 @@
  * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
  * Charko Apps - 共通API通信モジュール
  * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- * 
+ *
  * 【概要】
  * Google Apps Script (GAS) との通信を一元管理する共通モジュール。
  * 全アプリ（tracker/medical/kakeibo/kota）で共有。
- * 
- * 【主な機能】
- * - callGAS(): POST通信（データ保存・AI分析）
- * - fetchGAS(): GET通信（データ読込）※将来用
- * - タイムアウト処理（10秒）
- * - AbortController による中断制御
- * - ボタン無効化/有効化の自動処理
- * - 統一エラーレスポンス構造
- * 
- * 【エラーレスポンス形式】
+ *
+ * 【主な関数】
+ * - callGAS(app, action, data, options)
+ *     新フォーマット {app, action, data} でGASに送信。
+ *     成功/失敗・エラー原因を含むオブジェクトを返す。
+ *
+ * - gasPost(payload, options)
+ *     旧フォーマット（typeベース）との互換用。
+ *     tracker内の gasPostWithRetry を置き換える。
+ *
+ * 【エラーレスポンス形式】（全関数共通）
  * {
  *   success: false,
  *   error_message: "ユーザー向けメッセージ（日本語）",
- *   error_detail: "デバッグ用詳細（英語エラー文など）"
+ *   error_detail:  "デバッグ用詳細",
+ *   error_code:    "TIMEOUT" | "NETWORK" | "HTTP_5XX" | "GAS_URL_UNSET" | "GAS_ERROR" | "UNKNOWN"
  * }
- * 
+ *
  * 【用語解説】
- * - AbortController: fetchを途中で止めるための仕組み
- * - タイムアウト: 通信が遅い時に一定時間で諦める機能
- * - CORS: ブラウザのセキュリティ制限（text/plainで回避）
- * 
- * @version 1.0.0
- * @date 2026-04-08
+ * - AbortController: fetchを途中で止めるための仕組み（タイムアウト制御）
+ * - CORS: ブラウザのセキュリティ制限。text/plain ヘッダーで回避
+ * - リトライ: 失敗したとき自動で再送すること
+ *
+ * @version 2.0.0
+ * @date 2026-04-10
  */
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // 設定
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-/**
- * GAS デプロイURL（アプリ起動時に設定される想定）
- * 各アプリのHTMLファイル内で以下のように設定：
- * window.CHARKO_GAS_URL = 'https://script.google.com/macros/s/.../exec';
- */
-let GAS_URL = window.CHARKO_GAS_URL || '';
+let GAS_URL = (typeof window !== 'undefined' && window.CHARKO_GAS_URL) ? window.CHARKO_GAS_URL : '';
 
-/**
- * デフォルトタイムアウト時間（ミリ秒）
- */
-const DEFAULT_TIMEOUT = 10000; // 10秒
+const DEFAULT_TIMEOUT = 10000;
 
-/**
- * リトライ設定
- */
-const RETRY_CONFIG = {
-  maxRetries: 0,      // 現在はリトライなし（将来実装用）
-  retryDelay: 1000    // リトライ間隔（ミリ秒）
+const ERROR_MESSAGES = {
+  TIMEOUT:       'タイムアウトしました（10秒以内に応答がありませんでした）',
+  NETWORK:       'ネットワークに接続できませんでした。Wi-Fi・通信状態を確認してください',
+  HTTP_5XX:      'サーバーでエラーが発生しました。しばらく待ってから再試行してください',
+  GAS_URL_UNSET: 'GAS URLが設定されていません。設定タブからURLを入力してください',
+  GAS_ERROR:     'スプレッドシートへの保存に失敗しました',
+  UNKNOWN:       '予期しないエラーが発生しました',
 };
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // 公開API
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-/**
- * GAS URL を設定
- * 
- * @param {string} url - GASデプロイURL
- * 
- * @example
- * setGasUrl('https://script.google.com/macros/s/.../exec');
- */
 function setGasUrl(url) {
   GAS_URL = url;
-  window.CHARKO_GAS_URL = url;
+  if (typeof window !== 'undefined') window.CHARKO_GAS_URL = url;
   console.log('[CharkoAPI] GAS URL設定:', url);
 }
 
 /**
- * GAS に POST リクエストを送信（データ保存・AI分析）
- * 
- * @param {string} app - アプリ名（'tracker'|'medical'|'kakeibo'|'kota'）
- * @param {string} action - アクション名（'save'|'load'|'analyze'など）
- * @param {Object} data - 送信データ
- * @param {Object} options - オプション設定
- * @param {HTMLElement} options.button - 無効化するボタン要素
- * @param {number} options.timeout - タイムアウト時間（ミリ秒）
- * 
- * @returns {Promise<Object>} レスポンス
- * 
- * @example
- * // 基本的な使い方
- * const result = await callGAS('tracker', 'save', { 
- *   date: '2026-04-08',
- *   mood: 1,
- *   energy: 3
- * });
- * 
- * if (result.success) {
- *   console.log('保存成功:', result.data);
- * } else {
- *   console.error('保存失敗:', result.error_message);
- * }
- * 
- * @example
- * // ボタン無効化付き
- * const saveBtn = document.getElementById('save-btn');
- * const result = await callGAS('medical', 'save', visitData, {
- *   button: saveBtn
- * });
+ * GAS に POST 送信（新フォーマット: {app, action, data}）
+ *
+ * @param {string} app    - 'tracker'|'medical'|'kakeibo'|'kota'
+ * @param {string} action - 'save'|'load'|'analyze' など
+ * @param {Object} data   - 送信データ
+ * @param {Object} [options]
+ * @param {HTMLElement} [options.button]  - 通信中に無効化するボタン
+ * @param {number}      [options.timeout] - タイムアウト（ミリ秒）
+ * @param {number}      [options.retry]   - リトライ回数（デフォルト0）
+ * @returns {Promise<{success:boolean, data?:any, error_message?:string, error_detail?:string, error_code?:string}>}
  */
 async function callGAS(app, action, data, options = {}) {
-  // 引数検証
-  if (!app || !action) {
-    return createErrorResponse(
-      '呼び出しエラー',
-      'app と action は必須です'
-    );
-  }
+  if (!app || !action) return _errRes('UNKNOWN', 'app と action は必須です');
 
-  if (!GAS_URL) {
-    return createErrorResponse(
-      'GAS URL未設定',
-      'setGasUrl() でURLを設定してください'
-    );
-  }
+  const url = GAS_URL || (typeof window !== 'undefined' && window.CHARKO_GAS_URL) || '';
+  if (!url) return _errRes('GAS_URL_UNSET');
 
-  // オプションのデフォルト値
-  const timeout = options.timeout || DEFAULT_TIMEOUT;
   const button = options.button || null;
-
-  // ボタン無効化
-  if (button) {
-    button.disabled = true;
-    button.dataset.originalText = button.textContent;
-    button.textContent = '通信中...';
-  }
-
-  // タイムアウト制御用
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeout);
-
+  _disableButton(button);
   try {
-    // リクエストボディ作成
-    const payload = {
-      app,
-      action,
-      data: data || {}
-    };
-
-    console.log(`[CharkoAPI] POST ${app}/${action}`, payload);
-
-    // fetch実行
-    const response = await fetch(GAS_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'text/plain' // CORS回避
-      },
-      redirect: 'follow',
-      signal: controller.signal,
-      body: JSON.stringify(payload)
-    });
-
-    // タイムアウトタイマー解除
-    clearTimeout(timeoutId);
-
-    // HTTPステータスチェック
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-    }
-
-    // レスポンスパース
-    const result = await response.json();
-
-    // GAS側のエラーチェック
-    if (result.success === false) {
-      console.error('[CharkoAPI] GASエラー:', result);
-      return result; // そのまま返す（既にエラー形式）
-    }
-
-    console.log('[CharkoAPI] 成功:', result);
-    return result;
-
-  } catch (error) {
-    clearTimeout(timeoutId);
-
-    // エラー種別判定
-    let errorMessage = '通信に失敗しました';
-    let errorDetail = error.message;
-
-    if (error.name === 'AbortError') {
-      errorMessage = 'タイムアウトしました';
-      errorDetail = `${timeout / 1000}秒以内に応答がありませんでした`;
-    } else if (error.message.includes('Failed to fetch')) {
-      errorMessage = 'ネットワークエラー';
-      errorDetail = 'インターネット接続を確認してください';
-    }
-
-    console.error('[CharkoAPI] エラー:', error);
-
-    return createErrorResponse(errorMessage, errorDetail);
-
+    return await _fetchWithRetry(url, { app, action, data: data || {} }, options.timeout || DEFAULT_TIMEOUT, options.retry || 0);
   } finally {
-    // ボタン復元
-    if (button) {
-      button.disabled = false;
-      button.textContent = button.dataset.originalText || '送信';
-    }
+    _enableButton(button);
   }
 }
 
 /**
- * GAS から GET リクエスト（将来実装用）
- * 
- * 現在のGASは doPost のみ実装。
- * 将来的に doGet を実装したら使用可能。
- * 
- * @param {string} app - アプリ名
- * @param {string} action - アクション名
- * @param {Object} params - クエリパラメータ
- * 
- * @returns {Promise<Object>} レスポンス
- * 
- * @example
- * const result = await fetchGAS('tracker', 'load', { 
- *   date: '2026-04-08' 
- * });
+ * GAS に POST 送信（旧フォーマット互換: typeベースのペイロードをそのまま送る）
+ * tracker の gasPostWithRetry を置き換える互換関数。
+ *
+ * @param {Object} payload  - 送信ペイロード（{type:'...'} 形式 or {app,action,data} 形式）
+ * @param {Object} [options]
+ * @param {number}  [options.retry]   - リトライ回数（デフォルト0）
+ * @param {number}  [options.timeout] - タイムアウト（ミリ秒）
+ * @param {HTMLElement} [options.button] - 通信中に無効化するボタン
+ * @returns {Promise<{success:boolean, ...}>}
  */
-async function fetchGAS(app, action, params = {}) {
-  // 将来実装用のスタブ
-  console.warn('[CharkoAPI] fetchGAS は未実装です。callGAS を使用してください。');
-  
-  return createErrorResponse(
-    '未実装',
-    'fetchGAS は将来実装予定です'
-  );
+async function gasPost(payload, options = {}) {
+  const url = GAS_URL || (typeof window !== 'undefined' && window.CHARKO_GAS_URL) || '';
+  if (!url) return _errRes('GAS_URL_UNSET');
+
+  const button = options.button || null;
+  _disableButton(button);
+  try {
+    return await _fetchWithRetry(url, payload, options.timeout || DEFAULT_TIMEOUT, options.retry || 0);
+  } finally {
+    _enableButton(button);
+  }
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // 内部ヘルパー
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-/**
- * エラーレスポンスを生成（統一形式）
- * 
- * @param {string} message - ユーザー向けメッセージ
- * @param {string} detail - デバッグ用詳細
- * @returns {Object} エラーレスポンス
- * 
- * @private
- */
-function createErrorResponse(message, detail) {
+async function _fetchWithRetry(url, payload, timeout, maxRetry) {
+  let lastError = null;
+
+  for (let attempt = 0; attempt <= maxRetry; attempt++) {
+    if (attempt > 0) {
+      await new Promise(r => setTimeout(r, 1500 * attempt));
+      console.log(`[CharkoAPI] リトライ ${attempt}/${maxRetry}`);
+    }
+
+    const controller = new AbortController();
+    const timerId = setTimeout(() => controller.abort(), timeout);
+
+    try {
+      console.log('[CharkoAPI] POST', payload.app || payload.type || '(unknown)', payload);
+
+      const res = await fetch(url, {
+        method:   'POST',
+        headers:  { 'Content-Type': 'text/plain' },
+        redirect: 'follow',
+        signal:   controller.signal,
+        body:     JSON.stringify(payload),
+      });
+
+      clearTimeout(timerId);
+
+      if (!res.ok) {
+        const e = new Error(`HTTP_${res.status}`);
+        e.httpStatus = res.status;
+        throw e;
+      }
+
+      let result;
+      try {
+        result = await res.json();
+      } catch (parseErr) {
+        throw new Error('INVALID_JSON: ' + parseErr.message);
+      }
+
+      if (result.success === false) {
+        console.warn('[CharkoAPI] GASエラー:', result);
+        return {
+          success:       false,
+          error_message: result.error_message || ERROR_MESSAGES.GAS_ERROR,
+          error_detail:  result.error_detail  || '',
+          error_code:    'GAS_ERROR',
+        };
+      }
+
+      console.log('[CharkoAPI] 成功:', result);
+      return result;
+
+    } catch (err) {
+      clearTimeout(timerId);
+      lastError = err;
+      // タイムアウト・ネットワーク切断はリトライ不要
+      if (err.name === 'AbortError' || err.message === 'Failed to fetch') break;
+      if (attempt < maxRetry) continue;
+    }
+  }
+
+  return _classifyError(lastError);
+}
+
+function _classifyError(err) {
+  if (!err) return _errRes('UNKNOWN');
+  if (err.name === 'AbortError')                                        return _errRes('TIMEOUT',   `${DEFAULT_TIMEOUT / 1000}秒以内に応答なし`);
+  if (err.message === 'Failed to fetch' || err.message.includes('Network')) return _errRes('NETWORK',  err.message);
+  if (err.httpStatus >= 500)                                             return _errRes('HTTP_5XX', `HTTP ${err.httpStatus}`);
+  return _errRes('UNKNOWN', err.message);
+}
+
+function _errRes(code, detail = '') {
+  console.error('[CharkoAPI] エラー:', code, detail);
   return {
-    success: false,
-    error_message: message,
-    error_detail: detail || ''
+    success:       false,
+    error_message: ERROR_MESSAGES[code] || ERROR_MESSAGES.UNKNOWN,
+    error_detail:  detail,
+    error_code:    code,
   };
 }
 
+function _disableButton(btn) {
+  if (!btn) return;
+  btn.disabled = true;
+  btn.dataset.originalText = btn.textContent;
+  btn.textContent = '通信中...';
+}
+
+function _enableButton(btn) {
+  if (!btn) return;
+  btn.disabled = false;
+  btn.textContent = btn.dataset.originalText || '送信';
+}
+
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// エクスポート（グローバルスコープに公開）
+// エクスポート
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-// ブラウザ環境用（window オブジェクトに追加）
 if (typeof window !== 'undefined') {
-  window.CharkoAPI = {
-    setGasUrl,
-    callGAS,
-    fetchGAS
-  };
-  
-  console.log('[CharkoAPI] モジュール読み込み完了 v1.0.0');
+  window.CharkoAPI  = { setGasUrl, callGAS, gasPost };
+  window.callGAS    = callGAS;
+  window.gasPost    = gasPost;
+  window.setGasUrl  = setGasUrl;
+  console.log('[CharkoAPI] モジュール読み込み完了 v2.0.0');
 }
 
-// Node.js環境用（将来のテスト用）
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = {
-    setGasUrl,
-    callGAS,
-    fetchGAS
-  };
+  module.exports = { setGasUrl, callGAS, gasPost };
 }
