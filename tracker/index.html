@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<meta name="deployed-at" content="2026-04-10T08:44:18.239Z">
+<meta name="deployed-at" content="2026-04-10T08:56:27.442Z">
 <title>日次記録</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -1727,11 +1727,21 @@ async function autoSyncToGAS(k){
   if(!GAS_URL)return false;
   k=k||getSelDate();
   const rec=loadRec(k);
-  const payload={...rec.data,date:k};
+  // 新フォーマット: {app, action, data} でGASのdoPostルーティングに合わせる
+  const payload={
+    app:'tracker',
+    action:'save',
+    data:{...rec.data,date:k}
+  };
   try{
     const res=await fetch(GAS_URL,{method:'POST',headers:{'Content-Type':'text/plain'},redirect:'follow',body:JSON.stringify(payload)});
-    return res.ok;
+    if(!res.ok)return false;
+    // GASのレスポンスbody（success: true/false）も確認する
+    const json=await res.json();
+    console.log('[autoSyncToGAS]',k,json);
+    return json.success===true;
   }catch(e){
+    console.error('[autoSyncToGAS]',e);
     return false;
   }
 }
