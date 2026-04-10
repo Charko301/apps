@@ -1,16 +1,28 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-<meta charset="UTF-8"> 
- <link rel="stylesheet" href="./shared/styles.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <meta name="deployed-at" content="(未デプロイ)">
 <title>日次記録</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<!-- Charko common modules -->
+<link rel="stylesheet" href="./common/styles.css">
+<script src="./common/api.js"></script>
+<script src="./common/ui.js"></script>
+<script src="./common/storage.js"></script>
 <style>
 /* ─── CSS変数 ─── */
-
+:root{
+  --bg:#0a0a14;
+  --header-h:90px;--s1:#10101e;--s2:#16162a;--s3:#1e1e34;
+  --border:#2a2a42;--text:#e8e8f4;--t2:#8888aa;--t3:#aaaacc;
+  --accent:#7c6af7;--a2:#f76a6a;--a3:#4af7a0;--a4:#f7c46a;--a5:#6ab8f7;--ap:#c46af7;--ab:#6a8af7;
+  --ng:#f76a6a;--ok:#4af7a0;
+  --r:10px;--r2:8px;--gap:9px;
+}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
 body{background:var(--bg);color:var(--text);font-family:'Noto Sans JP',sans-serif;font-size:13px;min-height:100vh;overscroll-behavior:none;}
 input,textarea,select{background:var(--s2);border:1px solid var(--border);border-radius:var(--r2);color:var(--text);font-family:'Noto Sans JP',sans-serif;font-size:12px;padding:7px 10px;outline:none;width:100%;transition:border-color .15s;}
@@ -1660,7 +1672,9 @@ const HANDA_LAT=34.8939,HANDA_LNG=136.9380;
 const CLIENT_ID='933210373015-34tar1apnfdcb94gl743tqajpp954m0r.apps.googleusercontent.com';
 const SHEET_ID='1ikC4auuAYjrqQKFsygCqXIY2L0Fjye-OoLBGLEwXq5I';
 let GAS_URL='https://script.google.com/macros/s/AKfycbzWNNXrsrDkIDDkFJUNVKFLne7WAlkQsDOed-aRJrcEaWeXuJ-YwF2iGor4pYCM1zDkjg/exec';
-const APP_VER='4.22';
+// api.js の callGAS / gasPost にも同じURLを渡す
+if(typeof setGasUrl==='function') setGasUrl(GAS_URL);
+const APP_VER='4.23';
 const QUEUE_KEY='gas_queue';
 const ROUTINE_KEY='routines_v2';
 const ROUTINE_LOG_KEY='routine_log_v2';
@@ -1710,18 +1724,15 @@ function saveRec(updates,k){
   localStorage.setItem(`rec_${k}`,JSON.stringify(rec));
 }
 
-/** 保存後にGASへ自動同期（text/plainでCORS回避、成否をboolで返す） */
+/**
+ * 保存後にGASへ自動同期
+ * callGAS を使用し、エラー情報を含むオブジェクトを返す。
+ * 戻り値: {success:boolean, error_message?, error_detail?, error_code?}
+ */
 async function autoSyncToGAS(k){
-  if(!GAS_URL)return false;
   k=k||getSelDate();
   const rec=loadRec(k);
-  const payload={...rec.data,date:k};
-  try{
-    const res=await fetch(GAS_URL,{method:'POST',headers:{'Content-Type':'text/plain'},redirect:'follow',body:JSON.stringify(payload)});
-    return res.ok;
-  }catch(e){
-    return false;
-  }
+  return await callGAS('tracker','save',{...rec.data,date:k});
 }
 
 /** フィードバックを追記（上書き禁止・配列に追加） */
@@ -1753,20 +1764,7 @@ function toErrCode(raw){
   return'UNKNOWN_ERROR';
 }
 let _lastErr='';
-function showError(title,code,detail){
-  const errCode=toErrCode(code);
-  const solution=ERR_MAP[errCode]||'';
-  _lastErr=`${title}\nエラーコード: ${errCode}\n詳細: ${detail}\n解決方法: ${solution}`;
-  console.error('[showError]',_lastErr);
-  // PC（768px以上）はトーストで表示、モバイルはダイアログ
-  if(window.innerWidth>=768){
-    showToast(`⚠️ ${title}｜${errCode}`, 'var(--a2)');
-  } else {
-    document.getElementById('err-title').textContent=title;
-    document.getElementById('err-body').textContent=`エラーコード: ${errCode}\n\n詳細: ${detail||'なし'}\n\n解決方法: ${solution}`;
-    document.getElementById('err-overlay').classList.add('show');
-  }
-}
+// showError / showToast は common/ui.js で定義（ui.js が tracker内定義を上書きする）
 
 // ─── 出勤時に昼食タイプを「中食」に自動設定 ───
 // 既に昼食タイプが選ばれている場合は上書きしない
@@ -1784,15 +1782,7 @@ function copyErrDetail(){
   document.getElementById('err-overlay').classList.remove('show');
 }
 
-// ═══════════════════════════════════════════════
-// トースト
-// ═══════════════════════════════════════════════
-function showToast(msg,color){
-  const ov=document.getElementById('toast-overlay');
-  const box=document.getElementById('toast-box');
-  box.textContent=msg;box.style.background=color||'var(--accent)';
-  ov.classList.add('show');setTimeout(()=>ov.classList.remove('show'),2200);
-}
+// showToast は common/ui.js で定義（グローバルに公開済み）
 
 // ═══════════════════════════════════════════════
 // AIバナー
@@ -2507,8 +2497,8 @@ async function saveMorning(){
     symptoms:getSymptoms(),condition:document.getElementById('condition-m').value,
     weatherHpa:w.hpa||null,weatherLabel:w.weather||null,weatherIcon:w.icon||null,
   });
-  const synced=await autoSyncToGAS();
-  showToast(synced?'🌅 朝の記録を保存しました ✅':'🌅 朝の記録を保存しました ⚠️ スプシ同期失敗','#c09030');
+  const result=await autoSyncToGAS();
+  showSyncResult(result.success,'🌅 朝の記録',result,'#c09030');
 }
 async function saveNoon(){
   saveRec({
@@ -2526,8 +2516,8 @@ async function saveNoon(){
     attendReason:document.getElementById('attend-reason-text').value||document.getElementById('attend-reason-text2').value,
     attendMemo:document.getElementById('attend-memo').value,
   });
-  const synced=await autoSyncToGAS();
-  showToast(synced?'☀️ 昼の記録を保存しました ✅':'☀️ 昼の記録を保存しました ⚠️ スプシ同期失敗','#306090');
+  const result=await autoSyncToGAS();
+  showSyncResult(result.success,'☀️ 昼の記録',result,'#306090');
 }
 async function saveNight(){
   saveRec({
@@ -2546,8 +2536,8 @@ async function saveNight(){
     diary:document.getElementById('diary').value,
     notes:document.getElementById('notes').value,
   });
-  const synced=await autoSyncToGAS();
-  showToast(synced?'🌙 夜の記録を保存しました ✅':'🌙 夜の記録を保存しました ⚠️ スプシ同期失敗','#6030a0');
+  const result=await autoSyncToGAS();
+  showSyncResult(result.success,'🌙 夜の記録',result,'#6030a0');
   sendAIFeedback('night');
 }
 async function saveRecord(){
@@ -2560,8 +2550,8 @@ async function saveRecord(){
     kotaReason:document.getElementById('kota-reason')?.value||'',
     // wakeupEntriesはaddWakeupEntry/updateWakeupEntryMemoで個別保存済み
   });
-  const synced=await autoSyncToGAS();
-  showToast(synced?'📓 記録を保存しました ✅':'📓 記録を保存しました ⚠️ スプシ同期失敗','#8040a0');
+  const result=await autoSyncToGAS();
+  showSyncResult(result.success,'📓 記録',result,'#8040a0');
   renderPeriodPrediction();
   sendAIFeedback('record');
 }
@@ -3184,22 +3174,28 @@ function enqueue(payload){
   q.push({payload,queuedAt:new Date().toISOString()});
   localStorage.setItem(QUEUE_KEY,JSON.stringify(q));
 }
+/**
+ * gasPostWithRetry 互換ラッパー（common/api.js の gasPost に委譲）
+ * 既存の呼び出しコードはそのまま動く。
+ * returnResponse=true の場合は res オブジェクトの代わりにレスポンスオブジェクトを返す
+ * （AI系呼び出しが res.text() を使うため後方互換を保持）
+ */
 async function gasPostWithRetry(payload,maxRetry=3,returnResponse=false){
-  for(let i=0;i<maxRetry;i++){
-    try{
-      const res=await fetch(GAS_URL,{method:'POST',headers:{'Content-Type':'text/plain'},redirect:'follow',body:JSON.stringify(payload)});
-      if(returnResponse)return res;
-      if(res.ok)return true;
-      throw new Error(String(res.status));
-    }catch(e){
-      if(i===maxRetry-1){
-        const code=e.message.match(/\d{3}/)?.[0]||'network';
-        if(!returnResponse)showError('GAS送信失敗',code,e.message.slice(0,80));
-        return false;
-      }
-      await new Promise(r=>setTimeout(r,1500*(i+1)));
-    }
+  const result = await gasPost(payload, {retry: maxRetry - 1});
+  if(returnResponse){
+    // AI系（claude_feedback等）は res.json() を呼ぶ想定なので、
+    // result をそのまま返せるダミーレスポンスオブジェクトを返す
+    return {
+      ok: result.success !== false,
+      json: async () => result,
+      text: async () => JSON.stringify(result),
+    };
   }
+  if(!result.success){
+    showError('GAS送信失敗', result.error_code||'UNKNOWN', result.error_detail||result.error_message||'');
+    return false;
+  }
+  return result;
 }
 async function flushQueue(){
   const q=JSON.parse(localStorage.getItem(QUEUE_KEY)||'[]');
