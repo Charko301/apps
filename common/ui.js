@@ -2,263 +2,253 @@
  * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
  * Charko Apps - 共通UI表示モジュール
  * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- *
- * 【主な関数】
- * - showToast(msg, colorOrType, duration)
- *     既存trackerの showToast(msg, color) と互換あり。
- *     type文字列（'success'|'error'|'warning'|'info'）も受け付ける。
- *
- * - showSyncResult(synced, label, errorInfo)
- *     保存ボタン押下後の結果表示に特化。
- *     成功→緑トースト、失敗→原因つき赤トースト+詳細ダイアログ。
- *
- * - showError(titleOrMessage, codeOrDetail, detail, onRetry)
- *     既存trackerの showError(title, code, detail) と互換あり。
- *     エラーオーバーレイを表示。
- *
- * - showLoading(message) / hideLoading()
- *
- * @version 2.0.0
- * @date 2026-04-10
+ * 
+ * 【概要】
+ * トースト通知、ローディング表示、エラー表示などの
+ * UI操作を一元管理する共通モジュール。
+ * 
+ * 【主な機能】
+ * - showToast(): 簡易通知表示
+ * - showLoading(): ローディング表示
+ * - hideLoading(): ローディング非表示
+ * - showError(): エラー詳細表示
+ * - confirm(): 確認ダイアログ
+ * 
+ * 【依存】
+ * styles.css のトースト・ローディング用スタイルが必要
+ * 
+ * @version 1.0.0
+ * @date 2026-04-08
  */
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// トースト
+// トースト通知
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-let _toastEl = null;
-let _toastTimer = null;
-
-const TYPE_COLORS = {
-  success: 'var(--a3)',
-  error:   'var(--a2)',
-  warning: '#c09030',
-  info:    'var(--accent)',
-};
+let toastElement = null;
+let toastTimer = null;
 
 /**
  * トースト通知を表示
- *
- * 【互換性】
- * 旧: showToast('メッセージ', '#c09030')      → そのまま動く
- * 新: showToast('メッセージ', 'success', 3000) → タイプ指定も動く
- *
- * @param {string} msg            - 表示メッセージ
- * @param {string} [colorOrType]  - CSSカラー('#xxxxxx'/'var(--xx)') または 'success'|'error'|'warning'|'info'
- * @param {number} [duration]     - 表示時間ms（デフォルト2200）
+ * 
+ * @param {string} message - 表示メッセージ
+ * @param {string} type - 通知タイプ（'success'|'error'|'info'|'warning'）
+ * @param {number} duration - 表示時間（ミリ秒、デフォルト2000）
+ * 
+ * @example
+ * showToast('保存しました', 'success');
+ * showToast('エラーが発生しました', 'error', 3000);
  */
-function showToast(msg, colorOrType, duration) {
-  // toast-overlay / toast-box がHTMLに直書きされている場合はそちらを優先使用
-  let ov  = document.getElementById('toast-overlay');
-  let box = document.getElementById('toast-box');
-
-  if (!ov) {
-    // 動的生成（ui.js単独で動く場合）
-    if (!_toastEl) {
-      _toastEl = document.createElement('div');
-      _toastEl.id = 'toast-overlay';
-      _toastEl.innerHTML = '<div id="toast-box" class="toast-box"></div>';
-      // 最低限のスタイル（styles.cssが読まれていない環境でも動くように）
-      Object.assign(_toastEl.style, {
-        position:'fixed', bottom:'80px', left:'50%', transform:'translateX(-50%)',
-        zIndex:'9999', pointerEvents:'none', opacity:'0', transition:'opacity .25s'
-      });
-      document.body.appendChild(_toastEl);
-    }
-    ov  = _toastEl;
-    box = ov.querySelector('#toast-box');
+function showToast(message, type = 'info', duration = 2000) {
+  // トースト要素を作成（初回のみ）
+  if (!toastElement) {
+    toastElement = document.createElement('div');
+    toastElement.className = 'toast-ov';
+    toastElement.innerHTML = '<div class="toast-box"></div>';
+    document.body.appendChild(toastElement);
   }
 
-  // カラー解決
-  const color = TYPE_COLORS[colorOrType] || colorOrType || 'var(--accent)';
+  // 既存のタイマーをクリア
+  if (toastTimer) {
+    clearTimeout(toastTimer);
+  }
 
-  box.textContent = msg;
-  if (box.style !== undefined) box.style.background = color;
+  // タイプに応じたアイコン
+  const icons = {
+    success: '✅',
+    error: '❌',
+    info: 'ℹ️',
+    warning: '⚠️'
+  };
+  const icon = icons[type] || icons.info;
 
-  ov.classList.add('show');
-  // 動的生成の場合はopacityで表示
-  if (ov === _toastEl) ov.style.opacity = '1';
+  // メッセージ設定
+  const box = toastElement.querySelector('.toast-box');
+  box.textContent = `${icon} ${message}`;
 
-  if (_toastTimer) clearTimeout(_toastTimer);
-  _toastTimer = setTimeout(() => {
-    ov.classList.remove('show');
-    if (ov === _toastEl) ov.style.opacity = '0';
-  }, duration || 2200);
+  // 表示
+  toastElement.classList.add('show');
+  box.style.transform = 'scale(1)';
+
+  // 自動非表示
+  toastTimer = setTimeout(() => {
+    toastElement.classList.remove('show');
+    box.style.transform = 'scale(0.8)';
+  }, duration);
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// 保存結果表示（新機能）
+// ローディング表示
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
+let loadingElement = null;
+
 /**
- * 保存ボタン押下後の結果を表示する専用関数
- *
- * 成功時: 緑トーストを2.2秒表示
- * 失敗時: 赤トーストを表示し、タップでエラー詳細ダイアログを開く
- *
- * @param {boolean} synced     - trueなら成功、falseなら失敗
- * @param {string}  label      - '朝の記録'|'昼の記録' など、何を保存しようとしたか
- * @param {Object|string} [errorInfo] - 失敗時のエラー情報
- *   文字列の場合: そのままerror_messageとして扱う
- *   オブジェクトの場合: {error_message, error_detail, error_code} を想定
- * @param {string}  [color]    - 成功時のトースト色（省略時は緑）
- *
+ * ローディング表示
+ * 
+ * @param {string} message - ローディングメッセージ（オプション）
+ * 
  * @example
- * // callGASの結果を渡す
- * const result = await callGAS('tracker', 'save', data);
- * showSyncResult(result.success, '朝の記録', result);
- *
- * @example
- * // bool + 色を渡す（既存コードからの移行用）
- * const synced = await autoSyncToGAS();
- * showSyncResult(synced, '朝の記録', null, '#c09030');
+ * showLoading('保存中...');
+ * await callGAS(...);
+ * hideLoading();
  */
-function showSyncResult(synced, label, errorInfo, color) {
-  if (synced) {
-    showToast(`✅ ${label}をスプシに保存しました`, color || 'var(--a3)');
-    return;
+function showLoading(message = '処理中...') {
+  // ローディング要素を作成（初回のみ）
+  if (!loadingElement) {
+    loadingElement = document.createElement('div');
+    loadingElement.className = 'loading-overlay';
+    loadingElement.innerHTML = `
+      <div class="loading-box">
+        <div class="loading-spinner"></div>
+        <div class="loading-text"></div>
+      </div>
+    `;
+    document.body.appendChild(loadingElement);
   }
 
-  // エラー情報を解決
-  let errMsg    = 'スプシへの保存に失敗しました';
-  let errDetail = '';
-  let errCode   = '';
+  // メッセージ設定
+  const textElement = loadingElement.querySelector('.loading-text');
+  textElement.textContent = message;
 
-  if (typeof errorInfo === 'string') {
-    errMsg = errorInfo;
-  } else if (errorInfo && typeof errorInfo === 'object') {
-    errMsg    = errorInfo.error_message || errMsg;
-    errDetail = errorInfo.error_detail  || '';
-    errCode   = errorInfo.error_code    || '';
-  }
+  // 表示
+  loadingElement.classList.add('show');
+}
 
-  // 失敗トースト（タップで詳細表示）
-  const toastMsg = `❌ ${label}のスプシ保存失敗 → タップで詳細`;
-  showToast(toastMsg, 'var(--a2)', 4000);
-
-  // トーストをタップ可能にして詳細ダイアログを開く
-  const box = document.getElementById('toast-box');
-  if (box) {
-    box.style.cursor   = 'pointer';
-    box.style.pointerEvents = 'auto';
-    box.onclick = () => {
-      box.style.cursor = '';
-      box.style.pointerEvents = '';
-      box.onclick = null;
-      showError(`${label}の保存失敗`, errCode || 'GAS_ERROR', errDetail || errMsg);
-    };
+/**
+ * ローディング非表示
+ */
+function hideLoading() {
+  if (loadingElement) {
+    loadingElement.classList.remove('show');
   }
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// エラーダイアログ
+// エラー表示
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-let _errEl = null;
-
-// ERR_MAP: trackerと共通のエラーコード→解決策マップ
-const _ERR_MAP = {
-  TIMEOUT:       'GASサーバーの応答が遅い可能性があります。しばらく待ってから再試行してください',
-  NETWORK:       'Wi-Fiまたはモバイル通信をオンにして再試行してください',
-  HTTP_5XX:      'GASサーバーで問題が発生しました。しばらく待ってから再試行してください',
-  GAS_URL_UNSET: '設定タブを開き、GAS URLを入力して保存してください',
-  GAS_ERROR:     'GASのコードかスプレッドシートの設定を確認してください',
-  NETWORK_ERROR: 'Wi-Fiまたはモバイル通信をオンにして再試行してください',
-  SERVER_ERROR:  'GASサーバーで問題が発生しました。しばらく待ってから再試行してください',
-  UNKNOWN:       'アプリを再読み込みして再試行してください',
-};
+let errorElement = null;
 
 /**
- * エラーダイアログを表示
- *
- * 【互換性】
- * 旧: showError('タイトル', 'ERROR_CODE', '詳細文') → そのまま動く
- * 新: showError('メッセージ', '', '', retryFn)       → 再試行ボタン付き
- *
- * @param {string}   titleOrMsg  - タイトル or エラーメッセージ
- * @param {string}   [codeOrDetail] - エラーコード or 詳細文
- * @param {string}   [detail]    - デバッグ用詳細文
- * @param {Function} [onRetry]   - 再試行ボタンを押したときのコールバック
+ * エラー詳細を表示
+ * 
+ * @param {string} errorMessage - ユーザー向けエラーメッセージ
+ * @param {string} errorDetail - デバッグ用詳細（オプション）
+ * @param {Function} onRetry - 再試行ボタンのコールバック（オプション）
+ * 
+ * @example
+ * showError('通信に失敗しました', 'Timeout after 10s', () => {
+ *   // 再試行処理
+ *   retryUpload();
+ * });
  */
-function showError(titleOrMsg, codeOrDetail = '', detail = '', onRetry = null) {
-  const title    = titleOrMsg;
-  const code     = codeOrDetail;
-  const solution = _ERR_MAP[code] || '';
-  const body     = [
-    code    ? `エラーコード: ${code}` : '',
-    detail  ? `詳細: ${detail}`       : '',
-    solution ? `解決方法: ${solution}` : '',
-  ].filter(Boolean).join('\n\n');
-
-  console.error('[CharkoUI] showError', { title, code, detail });
-
-  // PC（768px以上）はトーストで表示、モバイルはダイアログ
-  if (typeof window !== 'undefined' && window.innerWidth >= 768) {
-    showToast(`⚠️ ${title}${code ? ' | ' + code : ''}`, 'var(--a2)', 3500);
-    return;
-  }
-
-  // モバイル: err-overlay がHTMLに直書きされていればそれを使う
-  const overlayEl = document.getElementById('err-overlay');
-  if (overlayEl) {
-    const titleEl  = document.getElementById('err-title');
-    const bodyEl   = document.getElementById('err-body');
-    if (titleEl) titleEl.textContent = title;
-    if (bodyEl)  bodyEl.textContent  = body || codeOrDetail || '詳細なし';
-    overlayEl.classList.add('show');
-    return;
-  }
-
-  // フォールバック: 動的生成ダイアログ
-  if (!_errEl) {
-    _errEl = document.createElement('div');
-    _errEl.className = 'error-overlay';
-    _errEl.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;';
-    _errEl.innerHTML = `
-      <div style="background:var(--bg,#1a1a2e);border:1px solid var(--a2,#e05050);border-radius:12px;padding:20px;max-width:340px;width:100%">
-        <div style="font-weight:700;font-size:15px;color:var(--a2,#e05050);margin-bottom:8px" class="err-dyn-title"></div>
-        <div style="font-size:12px;color:var(--text,#ccc);white-space:pre-wrap;line-height:1.6" class="err-dyn-body"></div>
-        <div style="margin-top:14px;display:flex;gap:8px">
-          <button class="err-dyn-close" style="flex:1;padding:10px;border-radius:8px;border:1px solid var(--border,#333);background:transparent;color:var(--text,#ccc);cursor:pointer">閉じる</button>
-          <button class="err-dyn-retry" style="flex:1;padding:10px;border-radius:8px;border:none;background:var(--a3,#40a060);color:#fff;cursor:pointer;display:none">再試行</button>
+function showError(errorMessage, errorDetail = '', onRetry = null) {
+  // エラー要素を作成（初回のみ）
+  if (!errorElement) {
+    errorElement = document.createElement('div');
+    errorElement.className = 'error-overlay';
+    errorElement.innerHTML = `
+      <div class="error-box">
+        <div class="error-title"></div>
+        <div class="error-message"></div>
+        <div class="error-detail"></div>
+        <div class="error-actions">
+          <button class="btn-close">閉じる</button>
+          <button class="btn-retry" style="display:none">再試行</button>
         </div>
-      </div>`;
-    document.body.appendChild(_errEl);
-    _errEl.querySelector('.err-dyn-close').addEventListener('click', () => _errEl.style.display = 'none');
+      </div>
+    `;
+    document.body.appendChild(errorElement);
+
+    // 閉じるボタン
+    errorElement.querySelector('.btn-close').addEventListener('click', () => {
+      errorElement.classList.remove('show');
+    });
   }
 
-  _errEl.querySelector('.err-dyn-title').textContent = title;
-  _errEl.querySelector('.err-dyn-body').textContent  = body || codeOrDetail || '詳細なし';
-  _errEl.style.display = 'flex';
+  // 内容設定
+  errorElement.querySelector('.error-title').textContent = 'エラー';
+  errorElement.querySelector('.error-message').textContent = errorMessage;
+  errorElement.querySelector('.error-detail').textContent = 
+    errorDetail ? `詳細: ${errorDetail}` : '';
 
-  const retryBtn = _errEl.querySelector('.err-dyn-retry');
+  // 再試行ボタン
+  const retryBtn = errorElement.querySelector('.btn-retry');
   if (onRetry) {
     retryBtn.style.display = '';
-    retryBtn.onclick = () => { _errEl.style.display = 'none'; onRetry(); };
+    retryBtn.onclick = () => {
+      errorElement.classList.remove('show');
+      onRetry();
+    };
   } else {
     retryBtn.style.display = 'none';
   }
+
+  // 表示
+  errorElement.classList.add('show');
+
+  // コンソールにもログ
+  console.error('[CharkoUI] エラー表示:', {
+    message: errorMessage,
+    detail: errorDetail
+  });
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// ローディング
+// 確認ダイアログ
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-let _loadingEl = null;
+/**
+ * 確認ダイアログを表示（Promise返却）
+ * 
+ * @param {string} message - 確認メッセージ
+ * @param {string} confirmText - 確認ボタンテキスト（デフォルト'OK'）
+ * @param {string} cancelText - キャンセルボタンテキスト（デフォルト'キャンセル'）
+ * 
+ * @returns {Promise<boolean>} ユーザーの選択（true: OK, false: キャンセル）
+ * 
+ * @example
+ * const ok = await confirm('本当に削除しますか？', '削除', 'キャンセル');
+ * if (ok) {
+ *   deleteRecord();
+ * }
+ */
+function confirm(message, confirmText = 'OK', cancelText = 'キャンセル') {
+  return new Promise((resolve) => {
+    // 確認ダイアログ要素を作成
+    const overlay = document.createElement('div');
+    overlay.className = 'confirm-overlay';
+    overlay.innerHTML = `
+      <div class="confirm-box">
+        <div class="confirm-message"></div>
+        <div class="confirm-actions">
+          <button class="btn-cancel"></button>
+          <button class="btn-confirm"></button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
 
-function showLoading(message = '処理中...') {
-  if (!_loadingEl) {
-    _loadingEl = document.createElement('div');
-    _loadingEl.className = 'loading-overlay';
-    _loadingEl.innerHTML = `<div class="loading-box"><div class="loading-spinner"></div><div class="loading-text"></div></div>`;
-    document.body.appendChild(_loadingEl);
-  }
-  _loadingEl.querySelector('.loading-text').textContent = message;
-  _loadingEl.classList.add('show');
-}
+    // 内容設定
+    overlay.querySelector('.confirm-message').textContent = message;
+    overlay.querySelector('.btn-confirm').textContent = confirmText;
+    overlay.querySelector('.btn-cancel').textContent = cancelText;
 
-function hideLoading() {
-  if (_loadingEl) _loadingEl.classList.remove('show');
+    // イベント設定
+    overlay.querySelector('.btn-confirm').addEventListener('click', () => {
+      overlay.remove();
+      resolve(true);
+    });
+
+    overlay.querySelector('.btn-cancel').addEventListener('click', () => {
+      overlay.remove();
+      resolve(false);
+    });
+
+    // 表示
+    setTimeout(() => overlay.classList.add('show'), 10);
+  });
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -266,9 +256,14 @@ function hideLoading() {
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 /**
- * callGAS の結果を受けて自動でUI表示
- * @param {Object} result        - callGAS の返り値
+ * API呼び出し結果に応じて自動でUI表示
+ * 
+ * @param {Object} result - callGASの返り値
  * @param {string} successMessage - 成功時のメッセージ
+ * 
+ * @example
+ * const result = await callGAS('tracker', 'save', data);
+ * handleApiResult(result, '保存しました');
  */
 function handleApiResult(result, successMessage = '完了しました') {
   if (result.success) {
@@ -276,27 +271,86 @@ function handleApiResult(result, successMessage = '完了しました') {
   } else {
     showError(
       result.error_message || 'エラーが発生しました',
-      result.error_code    || '',
-      result.error_detail  || ''
+      result.error_detail || ''
     );
   }
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// エクスポート
+// アプリメタ情報（バージョン番号・履歴）
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
+/**
+ * ヘッダーのバージョン番号と設定タブのバージョン履歴アコーディオンを生成する。
+ * 各アプリの DOMContentLoaded で1回呼ぶだけでOK。
+ *
+ * 【前提条件】HTML側に以下のidが必要：
+ *   - id="app-version"  : ヘッダーのバージョン番号表示欄
+ *   - id="acc-versions" : 設定タブのバージョン履歴アコーディオン本体（acc-b）
+ *
+ * @param {Object} config
+ * @param {string} config.version  - 現在のバージョン（例: 'v1.3'）
+ * @param {Array}  config.history  - バージョン履歴の配列（新しい順）
+ *   各要素: { v: 'v1.3', date: '2026/04/10', note: '変更内容' }
+ *   最新2件は緑（var(--a3)）、それ以前はグレー（var(--t2)）で表示
+ *
+ * @example
+ * initAppMeta({
+ *   version: 'v1.3',
+ *   history: [
+ *     { v: 'v1.3', date: '2026/04/10', note: '受診準備を記録タブに統合' },
+ *     { v: 'v1.2', date: '2026/04/10', note: 'GASプロキシ方式に変更' },
+ *     { v: 'v1.0', date: '2026/04/08', note: '初版リリース' },
+ *   ]
+ * });
+ */
+function initAppMeta({ version, history = [] }) {
+  // ① ヘッダーのバージョン番号を更新
+  const versionEl = document.getElementById('app-version');
+  if (versionEl) {
+    versionEl.textContent = 'Charko Series ' + version;
+  } else {
+    console.warn('[CharkoUI] id="app-version" が見つかりません');
+  }
+
+  // ② バージョン履歴アコーディオンのHTMLを生成
+  const histEl = document.getElementById('acc-versions');
+  if (histEl) {
+    // 最新2件は緑、それ以前はグレーで表示（Trackerと同じスタイル）
+    const rows = history.map((item, i) => {
+      const color = i < 2 ? 'var(--a3)' : 'var(--t2)';
+      return `<b style="color:${color}">${item.v}</b>（${item.date}）${item.note}<br>`;
+    }).join('');
+    histEl.innerHTML = `<div style="font-size:10px;color:var(--t2);line-height:2">${rows}</div>`;
+  } else {
+    console.warn('[CharkoUI] id="acc-versions" が見つかりません');
+  }
+}
+
+
+
 if (typeof window !== 'undefined') {
-  window.CharkoUI     = { showToast, showSyncResult, showError, showLoading, hideLoading, handleApiResult };
-  window.showToast    = showToast;
-  window.showSyncResult = showSyncResult;
-  window.showError    = showError;
-  window.showLoading  = showLoading;
-  window.hideLoading  = hideLoading;
-  window.handleApiResult = handleApiResult;
-  console.log('[CharkoUI] モジュール読み込み完了 v2.0.0');
+  window.CharkoUI = {
+    showToast,
+    showLoading,
+    hideLoading,
+    showError,
+    confirm,
+    handleApiResult,
+    initAppMeta
+  };
+
+  console.log('[CharkoUI] モジュール読み込み完了 v1.1.0');
 }
 
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { showToast, showSyncResult, showError, showLoading, hideLoading, handleApiResult };
+  module.exports = {
+    showToast,
+    showLoading,
+    hideLoading,
+    showError,
+    confirm,
+    handleApiResult,
+    initAppMeta
+  };
 }
