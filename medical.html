@@ -874,17 +874,23 @@ async function saveVisit(btn){
     syncToKakeibo(visit);
   }
 
-  // ── GAS連携（URL未設定の場合は CharkoAPI が自動でスキップ） ──
+  // ── カレンダー連携 ──
   const calSync=document.getElementById('v-cal-sync');
   if(visit.nextDate&&calSync&&calSync.checked){
-    const r=await syncToGAS('addCalendar',{
-      title:`受診：${visit.clinic||visit.doctor||'受診'}`,
-      date:visit.nextDate,
-      time:visit.nextTime||'',
-      description:`【${visit.type||''}】${visit.nextMemo||''}`
-    });
-    if(r.ok) showToast('📅 カレンダーに登録しました');
-    else if(r.reason&&r.reason!=='GAS URLが設定されていません。設定タブからURLを入力してください') console.warn('GAS calendar error:',r.reason);
+    const gasConfig=LS.gas();
+    if(!gasConfig.url){
+      showToast('⚠️ GAS URLが未設定です','var(--a5)',3000,'設定タブ → Google連携 から入力してください');
+    }else{
+      const r=await CharkoAPI.gasPost({
+        app:'medical',action:'addCalendar',
+        title:`受診：${visit.clinic||visit.doctor||'受診'}`,
+        date:visit.nextDate,
+        time:visit.nextTime||'',
+        description:`【${visit.type||''}】${visit.nextMemo||''}`
+      });
+      if(r.success) showToast('📅 カレンダーに登録しました','var(--a3)',2500);
+      else showToast('⚠️ カレンダー登録失敗','var(--a4)',4000,r.error_message);
+    }
   }
 
   // ── スプレッドシート同期（ボタングレーアウト + subテキスト対応） ──
@@ -1407,8 +1413,9 @@ document.addEventListener('DOMContentLoaded',()=>{
   // ── バージョン情報（ui.js の initAppMeta で生成） ──
   // 他のアプリも同じ形式で呼ぶだけでヘッダーと設定タブに反映される
   initAppMeta({
-    version: 'v1.4',
+    version: 'v1.5',
     history: [
+      { v: 'v1.5', date: '2026/04/14', note: 'カレンダー同期をGAS経由に修正・URL未設定時の警告トースト追加' },
       { v: 'v1.4', date: '2026/04/14', note: 'common/パス修正・saveVisitボタングレーアウト対応・showToast共通化・GASにapp引数追加' },
       { v: 'v1.3', date: '2026/04/10', note: '受診準備を記録タブに統合・医療機関セレクト＋自由記述入力欄を追加' },
       { v: 'v1.2', date: '2026/04/10', note: 'AI分析をGASプロキシ方式に変更・Gemini出力を箇条書きに変更' },
