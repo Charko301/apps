@@ -6,11 +6,11 @@
 <title>幸太ログ</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-
-
-
-
-
+<!-- Charko 共通モジュール -->
+<link rel="stylesheet" href="styles.css">
+<script src="api.js"></script>
+<script src="ui.js"></script>
+<script src="storage.js"></script>
 <style>
 :root{
   --bg:#0d1117;--s1:#161b22;--s2:#1c2128;--s3:#21262d;
@@ -117,10 +117,8 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent);}
 .set-btn.green{border-color:var(--a3);color:var(--a3);}
 .set-btn.red{border-color:#f85149;color:#f85149;}
 .empty{text-align:center;padding:48px 16px;color:var(--t2);font-size:13px;line-height:2.4;}
-.toast-ov{position:fixed;top:0;left:0;right:0;bottom:0;display:flex;align-items:center;justify-content:center;z-index:99999;pointer-events:none;opacity:0;transition:opacity .3s;}
-.toast-ov.show{opacity:1;}
-.toast-box{background:var(--s1);border:1px solid var(--border);color:var(--text);padding:12px 24px;border-radius:12px;font-size:13px;font-weight:500;box-shadow:0 8px 32px rgba(0,0,0,.5);transform:scale(.8);transition:transform .3s;max-width:85vw;text-align:center;}
-.toast-box.is-error{border-color:#f85149;color:#f85149;}
+#toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:var(--s3);border:1px solid var(--border);color:var(--text);padding:9px 20px;border-radius:99px;font-size:13px;font-weight:500;z-index:9999;opacity:0;transition:opacity .2s;pointer-events:none;white-space:nowrap;}
+#toast.show{opacity:1;}
 </style>
 </head>
 <body>
@@ -128,7 +126,6 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent);}
 <div id="header">
   <div>
     <div id="header-title">🐾 <span>幸太</span>ログ</div>
-    <div id="app-version" style="font-size:9px;color:var(--t2);margin-top:1px;font-family:'DM Mono',monospace;"></div>
     <div id="header-sub">未同期</div>
   </div>
   <button id="sync-badge" onclick="syncToGAS()">↑ スプシ保存</button>
@@ -605,58 +602,32 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent);}
 
 <div class="panel" id="panel-setting">
   <div class="acc">
-    <div class="acc-h open" onclick="toggleAcc('acc-backup')">
+    <div class="acc-h open" onclick="toggleAcc('acc-gas')">
+      <div class="acc-hl">🔗 Google スプシ連携</div>
+      <div class="acc-hr"><span class="acc-sum" id="acc-gas-sum"></span><span class="acc-arrow">▼</span></div>
+    </div>
+    <div class="acc-b open" id="acc-gas">
+      <div class="field"><label>GAS WebアプリURL</label><input type="text" id="gas-url-input" placeholder="https://script.google.com/macros/s/..."></div>
+      <button class="set-btn green" onclick="saveGasUrl()">✅ URLを保存</button>
+      <div id="gas-url-status" style="font-size:12px;color:var(--t2);margin-top:4px"></div>
+    </div>
+  </div>
+  <div class="acc">
+    <div class="acc-h" onclick="toggleAcc('acc-backup')">
       <div class="acc-hl">💾 バックアップ・復元</div>
       <div class="acc-hr"><span class="acc-arrow">▼</span></div>
     </div>
-    <div class="acc-b open" id="acc-backup">
+    <div class="acc-b" id="acc-backup">
       <button class="set-btn green" onclick="exportJson()">📤 JSONでバックアップ</button>
       <label style="display:block;cursor:pointer"><input type="file" id="import-file" accept=".json" style="display:none" onchange="importJson(this)"><div class="set-btn" onclick="document.getElementById('import-file').click()">📥 JSONから復元</div></label>
       <button class="set-btn red" onclick="clearAll()">🗑 全データ削除</button>
     </div>
   </div>
-  <div class="acc">
-    <div class="acc-h" onclick="toggleAcc('acc-versions')">
-      <div class="acc-hl">📋 バージョン履歴</div>
-      <div class="acc-hr"><span class="acc-arrow">▼</span></div>
-    </div>
-    <div class="acc-b" id="acc-versions"></div>
-  </div>
 </div>
 
-<script>
-// ── UI共通（ui.js インライン版）────────────────
-let _toastEl = null, _toastTimer = null;
-function showToast(msg, type = 'success', duration = 2500) {
-  if (!_toastEl) {
-    _toastEl = document.createElement('div');
-    _toastEl.className = 'toast-ov';
-    _toastEl.innerHTML = '<div class="toast-box"></div>';
-    document.body.appendChild(_toastEl);
-  }
-  if (_toastTimer) clearTimeout(_toastTimer);
-  const icons = { success:'✅', error:'❌', info:'ℹ️', warning:'⚠️' };
-  const box = _toastEl.querySelector('.toast-box');
-  box.textContent = (icons[type] || '') + ' ' + msg;
-  box.className = 'toast-box' + (type === 'error' ? ' is-error' : '');
-  _toastEl.classList.add('show');
-  box.style.transform = 'scale(1)';
-  _toastTimer = setTimeout(() => {
-    _toastEl.classList.remove('show');
-    box.style.transform = 'scale(.8)';
-  }, duration);
-}
-function initAppMeta({ version, history = [] }) {
-  const v = document.getElementById('app-version');
-  if (v) v.textContent = 'Charko Series ' + version;
-  const h = document.getElementById('acc-versions');
-  if (h) h.innerHTML = '<div style="font-size:10px;color:var(--t2);line-height:2">' +
-    history.map((item, i) =>
-      `<b style="color:${i < 2 ? 'var(--a3)' : 'var(--t2)'}">${item.v}</b>（${item.date}）${item.note}<br>`
-    ).join('') + '</div>';
-}
+<div id="toast"></div>
 
-const GAS_URL     = 'https://script.google.com/macros/s/AKfycbzWNNXrsrDkIDDkFJUNVKFLne7WAlkQsDOed-aRJrcEaWeXuJ-YwF2iGor4pYCM1zDkjg/exec';
+<script>
 const LS_KEY      = 'kota_logs_v3';
 const LS_SETTINGS = 'kota_settings_v2';
 const CAT_ICONS   = { 散歩:'🦮', 食事:'🍖', 体調:'🩺', 医療:'🏥', ケア:'✂️', 費用:'💴' };
@@ -668,17 +639,6 @@ let charts        = {};
 
 // ── 初期化 ──────────────────────────────────
 window.addEventListener('DOMContentLoaded', () => {
-  // バージョン情報表示
-  initAppMeta({
-    version: 'v1.2',
-    history: [
-      { v: 'v1.2', date: '2026/04/10', note: 'GAS URLをコードに統合、URL入力不要に。ui.jsインライン化' },
-      { v: 'v1.1', date: '2026/04/10', note: 'スプシ保存を実装（saveKotaLogs）' },
-      { v: 'v1.0', date: '2026/04/08', note: '初版リリース' },
-    ]
-  });
-  // GAS URLはコードに統合済み → 常時連携状態
-  document.getElementById('header-sub').textContent = '🔗 スプシ連携済み';
   const t = today();
   // 全カテゴリの日付欄に今日をセット
   CATS.forEach(c => {
@@ -686,8 +646,12 @@ window.addEventListener('DOMContentLoaded', () => {
     const el = document.getElementById(prefix + '-date');
     if (el) { el.value = t; updateAccSummary(prefix + '-datetime-sum', t); }
   });
-  // GAS URLはハードコード済み → 常時スプシ連携状態
-  document.getElementById('header-sub').textContent = '🔗 スプシ連携済み';
+  const s = loadSettings();
+  if (s.gasUrl) {
+    CharkoAPI.setGasUrl(s.gasUrl);  // 保存済みの GAS URL を CharkoAPI に登録
+    document.getElementById('gas-url-input').value = s.gasUrl;
+    document.getElementById('header-sub').textContent = '🔗 スプシ連携済み';
+  }
 });
 
 function today() { return new Date().toISOString().slice(0, 10); }
@@ -951,38 +915,36 @@ function renderGraphs() {
   });
 }
 
-// ── localStorage ─────────────────────────────
-function loadLogs()      { try { return JSON.parse(localStorage.getItem(LS_KEY) || '[]'); } catch { return []; } }
-function saveLogs(l)     { localStorage.setItem(LS_KEY, JSON.stringify(l)); }
-function loadSettings()  { try { return JSON.parse(localStorage.getItem(LS_SETTINGS) || '{}'); } catch { return {}; } }
-function saveSettings(s) { localStorage.setItem(LS_SETTINGS, JSON.stringify(s)); }
+// ── localStorage → CharkoStorage に委譲 ─────────────────────────────
+// 【CharkoStorage とは】storage.js の共通モジュール。
+//   LS_KEY ('kota_logs_v3') → localStorage の 'charko_kota_logs_v3' に保存される。
+//   JSON化・エラー処理・バージョン管理を自動で行う。
+function loadLogs()      { return CharkoStorage.load(LS_KEY, []); }
+function saveLogs(l)     { CharkoStorage.save(LS_KEY, l); }
+function loadSettings()  { return CharkoStorage.load(LS_SETTINGS, {}); }
+function saveSettings(s) { CharkoStorage.save(LS_SETTINGS, s); }
 
 // ── GAS連携 ──────────────────────────────────
+function saveGasUrl() {
+  const url = document.getElementById('gas-url-input').value.trim();
+  const s   = loadSettings(); s.gasUrl = url; saveSettings(s);
+  CharkoAPI.setGasUrl(url);  // GAS URL を CharkoAPI に登録（以後の通信でこのURLが使われる）
+  document.getElementById('gas-url-status').textContent = url ? '✅ 保存しました' : '⚠️ URLが空です';
+  document.getElementById('header-sub').textContent     = url ? '🔗 スプシ連携済み' : '未同期';
+}
+
+// 【CharkoAPI.callGAS とは】api.js の共通関数。app名・action名でルーティングする。
+//   タイムアウト(10秒)・エラー分類・リトライを内包。GAS URLは setGasUrl() で登録済み。
 async function syncToGAS() {
   const badge = document.getElementById('sync-badge');
   badge.textContent = '送信中...'; badge.disabled = true;
-  const result = await sendToGoogleSheets(loadLogs());
+  const result = await CharkoAPI.callGAS('kota', 'save', { logs: loadLogs() });
   badge.disabled = false; badge.textContent = '↑ スプシ保存';
   if (result.success) {
     document.getElementById('header-sub').textContent = '✅ ' + new Date().toLocaleTimeString('ja-JP', {hour:'2-digit', minute:'2-digit'}) + ' 同期済み';
     showToast('✅ スプシに保存しました');
   } else {
     showToast('❌ ' + (result.error_message || 'エラー'), 'error');
-  }
-}
-
-async function sendToGoogleSheets(logs) {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 10000);
-  try {
-    const res = await fetch(GAS_URL, { method:'POST', headers:{}, body:JSON.stringify({ app:'kota', action:'save', logs }), signal:controller.signal });
-    clearTimeout(timer);
-    if (!res.ok) throw new Error('HTTP_' + res.status);
-    const data = await res.json();
-    return data.success ? { success:true } : { success:false, error_message: data.error_message || '保存失敗' };
-  } catch (err) {
-    clearTimeout(timer);
-    return { success:false, error_message: err.name === 'AbortError' ? 'タイムアウト' : 'ネットワークエラー' };
   }
 }
 
@@ -1000,7 +962,7 @@ function importJson(input) {
 }
 function clearAll() {
   if (!confirm('全データを削除します。よいですか？')) return;
-  localStorage.removeItem(LS_KEY); showToast('🗑 削除しました');
+  CharkoStorage.remove(LS_KEY); showToast('🗑 削除しました');
 }
 
 // ── トースト ─────────────────────────────────
