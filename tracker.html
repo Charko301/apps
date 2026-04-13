@@ -3,12 +3,14 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<meta name="deployed-at" content="2026-04-10T14:58:18.491Z">
+<meta name="deployed-at" content="2026-04-13T14:17:01.247Z">
 <title>日次記録</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-<!-- 共通モジュールはスタンドアロン化のため削除（showToast/showError等はインライン実装済み） -->
+<!-- 共通モジュール（api.js: GAS通信、storage.js: localStorage管理） -->
+<script src="api.js"></script>
+<script src="storage.js"></script>
 <style>
 /* ─── CSS変数 ─── */
 :root{
@@ -1667,7 +1669,12 @@ label{display:block;font-size:9px;color:var(--t2);font-weight:600;letter-spacing
 const HANDA_LAT=34.8939,HANDA_LNG=136.9380;
 const CLIENT_ID='933210373015-34tar1apnfdcb94gl743tqajpp954m0r.apps.googleusercontent.com';
 const SHEET_ID='1ikC4auuAYjrqQKFsygCqXIY2L0Fjye-OoLBGLEwXq5I';
-let GAS_URL='https://script.google.com/macros/s/AKfycbzWNNXrsrDkIDDkFJUNVKFLne7WAlkQsDOed-aRJrcEaWeXuJ-YwF2iGor4pYCM1zDkjg/exec';
+// GAS URLはCharkoAPIモジュールで一元管理する
+// 【GAS_URLとは】Google Apps ScriptのWebアプリURLのこと。GASはGoogleのサーバー上で動くスクリプトで、
+//   このURLにPOSTすることでGoogleスプレッドシートへの読み書きができる。
+CharkoAPI.setGasUrl('https://script.google.com/macros/s/AKfycbzWNNXrsrDkIDDkFJUNVKFLne7WAlkQsDOed-aRJrcEaWeXuJ-YwF2iGor4pYCM1zDkjg/exec');
+// GAS_URLは後方互換用に参照を残す（旧コードが直接参照している箇所のため）
+Object.defineProperty(window,'GAS_URL',{get:()=>window.CHARKO_GAS_URL||'',set:v=>CharkoAPI.setGasUrl(v)});
 const APP_VER='4.22';
 const QUEUE_KEY='gas_queue';
 const ROUTINE_KEY='routines_v2';
@@ -1695,42 +1702,46 @@ function dateKey(d){
   return d||getSelDate();
 }
 
-/** localStorage から1日分のレコードを読む。新旧両フォーマット対応 */
+/** localStorage から1日分のレコードを読む。新旧両フォーマット対応
+ *  【CharkoStorage.load とは】storage.js の共通関数。
+ *    JSON解析・バージョン管理・エラー処理を自動で行う。
+ */
 function loadRec(k){
   k=k||getSelDate();
   try{
-    const raw=localStorage.getItem(`rec_${k}`);
-    if(!raw)return{recordId:`rec_${k}`,data:{},metadata:{},feedbacks:[]};
-    const parsed=JSON.parse(raw);
-    // v4.0形式
+    // CharkoStorage.load は { _version, value } ラッパーを自動で解除して返す
+    const parsed = CharkoStorage.load(`rec_${k}`);
+    if(parsed===null){
+      return{recordId:`rec_${k}`,data:{},metadata:{},feedbacks:[]};
+    }
+    // v4.0形式（recordIdあり）
     if(parsed.recordId){return parsed;}
     // v3.x 旧形式 → マイグレーション
     return{recordId:`rec_${k}`,data:parsed,metadata:{migratedFrom:'v3',updatedAt:new Date().toISOString()},feedbacks:[]};
   }catch{return{recordId:`rec_${k}`,data:{},metadata:{},feedbacks:[]};}
 }
 
-/** 1日分のdataフィールドを更新（上書きマージ） */
+/** 1日分のdataフィールドを更新（上書きマージ）
+ *  【CharkoStorage.save とは】storage.js の共通関数。
+ *    { _version, _savedAt, value } ラッパーを自動付与してJSON保存する。
+ */
 function saveRec(updates,k){
   k=k||getSelDate();
   const rec=loadRec(k);
   rec.data={...rec.data,...updates,date:k};
   rec.metadata={...rec.metadata,updatedAt:new Date().toISOString(),appVer:APP_VER};
-  localStorage.setItem(`rec_${k}`,JSON.stringify(rec));
+  // CharkoStorage.save はJSON化・プレフィックス付与・エラー処理を自動で行う
+  CharkoStorage.save(`rec_${k}`,rec);
 }
 
-/** 保存後にGASへ自動同期（text/plainでCORS回避、成否をboolで返す） */
+/** 保存後にGASへ自動同期（CharkoAPI経由、成否をboolで返す） */
 async function autoSyncToGAS(k){
-  if(!GAS_URL)return false;
+  if(!window.CHARKO_GAS_URL)return false;
   k=k||getSelDate();
   const rec=loadRec(k);
-  // 新Code.gs形式: {app, action, data:{...}} でPOST
-  const payload={app:'tracker',action:'save',data:{...rec.data,date:k}};
-  try{
-    const res=await fetch(GAS_URL,{method:'POST',headers:{'Content-Type':'text/plain'},redirect:'follow',body:JSON.stringify(payload)});
-    return res.ok;
-  }catch(e){
-    return false;
-  }
+  // 【callGAS とは】app名・action名でルーティングするapi.jsの共通関数
+  const res=await CharkoAPI.callGAS('tracker','save',{...rec.data,date:k});
+  return res.success;
 }
 
 /** フィードバックを追記（上書き禁止・配列に追加） */
@@ -1739,7 +1750,7 @@ function saveFeedback(model,text,k){
   const rec=loadRec(k);
   if(!rec.feedbacks)rec.feedbacks=[];
   rec.feedbacks.push({model,text,createdAt:new Date().toISOString()});
-  localStorage.setItem(`rec_${k}`,JSON.stringify(rec));
+  CharkoStorage.save(`rec_${k}`,rec);
 }
 
 /** 選択中の日付のdataのみ返す（下位互換ヘルパー） */
@@ -2594,7 +2605,7 @@ function saveFeedbackWithContext(model, text, context){
   const rec = loadRec(k);
   if(!rec.feedbacks) rec.feedbacks = [];
   rec.feedbacks.push({model, text, context, createdAt: new Date().toISOString()});
-  localStorage.setItem(`rec_${k}`, JSON.stringify(rec));
+  CharkoStorage.save(`rec_${k}`, rec);
 }
 
 // ═══════════════════════════════════════════════
@@ -2807,9 +2818,8 @@ function scChip(val){
 function renderLog(limitDays){
   const days=limitDays||parseInt(document.getElementById('log-period-days')?.value||7);
   const ctr=document.getElementById('log-container');if(!ctr)return;
-  const allKeys=[];
-  for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.startsWith('rec_'))allKeys.push(k);}
-  allKeys.sort().reverse();
+  // CharkoStorage.keys() は charko_ プレフィックスなしのキー一覧を返す
+  const allKeys=CharkoStorage.keys().filter(k=>k.startsWith('rec_')).sort().reverse();
   const cutoff=new Date();cutoff.setDate(cutoff.getDate()-days+1);
   const cutoffStr=cutoff.toISOString().slice(0,10);
   const keys=allKeys.filter(k=>k.replace('rec_','')>=cutoffStr);
@@ -2912,7 +2922,8 @@ function toggleLogEntry(id){
   body.classList.toggle('open',open);
   if(btn)btn.textContent=open?'▲':'▼';
 }
-function deleteLog(key){if(confirm('削除しますか？')){localStorage.removeItem(key);renderLog();}}
+// key は 'rec_YYYY-MM-DD' 形式（CharkoStorage では charko_rec_YYYY-MM-DD として保存）
+function deleteLog(key){if(confirm('削除しますか？')){CharkoStorage.remove(key);renderLog();}}
 function editLog(key){
   const r=recData(key.replace('rec_',''));const d=key.replace('rec_','');
   document.getElementById('edit-title').textContent=`📅 ${d} の編集`;
@@ -2942,9 +2953,7 @@ function closeEdit(){document.getElementById('edit-overlay').classList.remove('s
 // ═══════════════════════════════════════════════
 let currentRange=7;let charts={};
 function getAllRecs(days){
-  const allKeys=[];
-  for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.startsWith('rec_'))allKeys.push(k);}
-  allKeys.sort();
+  const allKeys=CharkoStorage.keys().filter(k=>k.startsWith('rec_')).sort();
   const cutoff=new Date();cutoff.setDate(cutoff.getDate()-days+1);
   const cutoffStr=cutoff.toISOString().slice(0,10);
   return allKeys.filter(k=>k.replace('rec_','')>=cutoffStr)
@@ -3193,22 +3202,33 @@ function enqueue(payload){
   q.push({payload,queuedAt:new Date().toISOString()});
   localStorage.setItem(QUEUE_KEY,JSON.stringify(q));
 }
+/**
+ * gasPostWithRetry: CharkoAPI.gasPost() へ委譲するラッパー
+ * 【CharkoAPI.gasPost とは】api.js で定義した共通API通信関数。
+ *   タイムアウト・リトライ・エラー分類を一元管理している。
+ *
+ * @param {Object}  payload        - GASに送信するデータ
+ * @param {number}  maxRetry       - 最大リトライ回数（デフォルト3）
+ * @param {boolean} returnResponse - trueにすると古い生fetchレスポンス互換オブジェクトを返す
+ *                                   （旧AIフィードバック呼び出しとの後方互換用）
+ * @returns {boolean|Object} returnResponse=falseなら成否boolean、trueなら互換オブジェクト
+ */
 async function gasPostWithRetry(payload,maxRetry=3,returnResponse=false){
-  for(let i=0;i<maxRetry;i++){
-    try{
-      const res=await fetch(GAS_URL,{method:'POST',headers:{'Content-Type':'text/plain'},redirect:'follow',body:JSON.stringify(payload)});
-      if(returnResponse)return res;
-      if(res.ok)return true;
-      throw new Error(String(res.status));
-    }catch(e){
-      if(i===maxRetry-1){
-        const code=e.message.match(/\d{3}/)?.[0]||'network';
-        if(!returnResponse)showError('GAS送信失敗',code,e.message.slice(0,80));
-        return false;
-      }
-      await new Promise(r=>setTimeout(r,1500*(i+1)));
+  // CharkoAPI.gasPost() はタイムアウト・エラー分類・ボタン無効化を内包している
+  const res = await CharkoAPI.gasPost(payload, { retry: Math.max(0, maxRetry - 1) });
+  if(returnResponse){
+    // 旧AIフィードバックが期待する { ok, json() } 形式に変換
+    if(res.success){
+      return { ok: true, json: async () => res };
+    } else {
+      console.warn('[gasPostWithRetry] 失敗:', res.error_message);
+      return { ok: false, status: 500 };
     }
   }
+  if(!res.success){
+    showError('GAS送信失敗', res.error_code || 'UNKNOWN', res.error_detail || res.error_message || '');
+  }
+  return res.success;
 }
 async function flushQueue(){
   const q=JSON.parse(localStorage.getItem(QUEUE_KEY)||'[]');
@@ -3224,13 +3244,9 @@ async function flushQueue(){
 async function triggerUnifiedLog(){
   const el=document.getElementById('unified-status');
   if(el)el.textContent='実行中...';
-  try{
-    const res=await fetch(GAS_URL,{method:'POST',headers:{'Content-Type':'text/plain'},redirect:'follow',body:JSON.stringify({type:'unified_log'})});
-    const d=await res.json();
-    if(el)el.textContent=d.message||'完了';
-  }catch(e){
-    if(el)el.textContent='エラー: '+e.message.slice(0,40);
-  }
+  // 【CharkoAPI.gasPost とは】api.js の共通通信関数。タイムアウト・エラー処理を内包する
+  const res=await CharkoAPI.gasPost({type:'unified_log'});
+  if(el)el.textContent=res.success?(res.message||'完了'):('エラー: '+(res.error_message||'').slice(0,40));
 }
 
 // ─── Google認証・スプシ同期 ───
@@ -3341,11 +3357,7 @@ async function archiveToSheets(){
   if(!_gapiToken){showToast('先にGoogleログインしてください','var(--a2)');return;}
   if(statusEl)statusEl.textContent='📦 バックアップ中...';
   try{
-    const keys=[];
-    for(let i=0;i<localStorage.length;i++){
-      const k=localStorage.key(i);
-      if(k&&k.startsWith('rec_'))keys.push(k);
-    }
+    const keys=CharkoStorage.keys().filter(k=>k.startsWith('rec_'));
     if(!keys.length){if(statusEl)statusEl.textContent='保存するデータがありません';return;}
     const payload={
       type:'archive',
@@ -3368,8 +3380,7 @@ async function archiveToSheets(){
 async function syncAllToSheets(){
   const statusEl=document.getElementById('sync-status');
   if(statusEl)statusEl.textContent='同期中...';
-  const keys=[];
-  for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.startsWith('rec_'))keys.push(k);}
+  const keys=CharkoStorage.keys().filter(k=>k.startsWith('rec_'));
   if(!keys.length){if(statusEl)statusEl.textContent='保存するデータがありません';return;}
   try{
     const rows=keys.map(k=>{const rec=loadRec(k);const r=rec.data||rec;return[k.replace('rec_',''),JSON.stringify(r)];});
@@ -3419,7 +3430,8 @@ async function syncAllFromSheets(){
           data: { ...data, date: date },
           metadata: { ...existing.metadata, updatedAt: new Date().toISOString(), syncedFromSheets: true }
         };
-        localStorage.setItem(`rec_${date}`, JSON.stringify(merged));
+        // CharkoStorage.save で { _version, _savedAt, value } ラッパーを付けて保存
+        CharkoStorage.save(`rec_${date}`, merged);
         updated++;
       }catch(e){
         console.warn('[syncAllFromSheets] ' + date + ':', e);
@@ -3449,15 +3461,8 @@ async function importFeedbackLogs(){
   if(statusEl)statusEl.textContent='スプシから取得中...';
 
   try{
-    const res=await fetch(GAS_URL,{
-      method:'POST',
-      headers:{'Content-Type':'text/plain'},
-      redirect:'follow',
-      body:JSON.stringify({type:'get_feedback_logs'})
-    });
-    if(!res.ok)throw new Error('HTTP '+res.status);
-
-    const d=await res.json();
+    // CharkoAPI.gasPost() で統一通信（タイムアウト・エラー分類を共通モジュールに委譲）
+    const d=await CharkoAPI.gasPost({type:'get_feedback_logs'});
     if(!d.success)throw new Error(d.error_message||'取得失敗');
 
     const logs=d.data.logs||[];
@@ -3487,7 +3492,7 @@ async function importFeedbackLogs(){
         createdAt: log.createdAt,
         context:   log.context||''
       });
-      localStorage.setItem(`rec_${log.date}`,JSON.stringify(rec));
+      CharkoStorage.save(`rec_${log.date}`, rec);
       added++;
     }
 
@@ -3746,7 +3751,7 @@ async function startAILogImport() {
           }
           if (changed) {
             rec.data.date = date;
-            localStorage.setItem('rec_' + date, JSON.stringify(rec));
+            CharkoStorage.save(`rec_${date}`, rec);
             ailogLog('✓ ' + date + (extracted.diary ? ': ' + String(extracted.diary).slice(0,40) : '（フィールドなし）'));
           } else {
             ailogLog('- ' + date + ': 抽出フィールドなし');
@@ -3820,9 +3825,9 @@ function setupReminders(){
   });
 }
 
-// ─── AI分析エクスポート ───
+// ─── AI分析エクスポート（旧版・後方互換用） ───
 function handleAIExport(){
-  const keys=[];for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.startsWith('rec_'))keys.push(k);}
+  const keys=CharkoStorage.keys().filter(k=>k.startsWith('rec_'));
   const logs=keys.sort().map(k=>{const rec=loadRec(k);return{date:k.replace('rec_',''),...(rec.data||rec)};});
   const json=JSON.stringify(logs,null,2);
   const fb=document.getElementById('ai-export-fallback');
@@ -4062,50 +4067,45 @@ function archiveOldData(){
   cutoff.setFullYear(cutoff.getFullYear() - 1);
   const cutoffStr = cutoff.toISOString().slice(0, 10);
 
-  const keys = [];
-  for(let i = 0; i < localStorage.length; i++){
-    const k = localStorage.key(i);
-    if(k && k.startsWith('rec_')){
-      const dateStr = k.replace('rec_', '');
-      if(dateStr < cutoffStr) keys.push(k);
-    }
-  }
+  // CharkoStorage.keys() は charko_ プレフィックスを除いたキー一覧を返す
+  // 【CharkoStorage.keys とは】storage.js の関数。保存済みキーを charko_ なしで返す。
+  const recKeys = CharkoStorage.keys().filter(k => {
+    if(!k.startsWith('rec_')) return false;
+    const dateStr = k.replace('rec_', '');
+    return dateStr < cutoffStr;
+  });
 
-  if(!keys.length){
+  if(!recKeys.length){
     showToast('1年以上前のデータはありません', 'var(--a3)');
     const el = document.getElementById('archive-status');
     if(el) el.textContent = '削除対象なし';
     return;
   }
 
-  const msg = `${keys.length}件のデータ（${cutoffStr}以前）を削除します。\n事前にスプシに保存済みですか？`;
+  const msg = `${recKeys.length}件のデータ（${cutoffStr}以前）を削除します。\n事前にスプシに保存済みですか？`;
   if(!confirm(msg)) return;
 
-  // 削除前にエクスポートを強制
+  // 削除前にバックアップをエクスポート（loadRec 経由で取得）
   const backup = {};
-  keys.forEach(k => { backup[k] = localStorage.getItem(k); });
+  recKeys.forEach(k => { backup[`charko_${k}`] = JSON.stringify(CharkoStorage.load(k)); });
   const blob = new Blob([JSON.stringify(backup, null, 2)], {type:'application/json'});
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = `charko_archive_${cutoffStr}.json`;
   a.click();
 
-  // 削除実行
-  keys.forEach(k => localStorage.removeItem(k));
+  // 削除実行（CharkoStorage.remove は charko_ プレフィックスを自動付与して削除）
+  recKeys.forEach(k => CharkoStorage.remove(k));
 
   const st = document.getElementById('archive-status');
-  if(st) st.textContent = `✅ ${keys.length}件をアーカイブしました`;
-  showToast(`🗄️ ${keys.length}件をアーカイブしました`, 'var(--a4)');
+  if(st) st.textContent = `✅ ${recKeys.length}件をアーカイブしました`;
+  showToast(`🗄️ ${recKeys.length}件をアーカイブしました`, 'var(--a4)');
 }
 
-// localStorage 使用量を表示
+// localStorage 使用量を表示（CharkoStorage.getUsage() に委譲）
+// 【getUsage とは】storage.js で定義。charko_ プレフィックスのキーの合計バイト数を返す。
 function getStorageUsage(){
-  let total = 0;
-  for(let i = 0; i < localStorage.length; i++){
-    const k = localStorage.key(i);
-    total += (k.length + (localStorage.getItem(k)||'').length) * 2; // UTF-16
-  }
-  return (total / 1024 / 1024).toFixed(2);
+  return CharkoStorage.getUsage().usedMB.toFixed(2);
 }
 
 // ═══════════════════════════════════════════════
@@ -4224,8 +4224,7 @@ function handleAIExport(){
   const days=parseInt(document.getElementById('ai-export-days')?.value||30);
   const cutoff=new Date();cutoff.setDate(cutoff.getDate()-days+1);
   const cutoffStr=cutoff.toISOString().slice(0,10);
-  const keys=[];
-  for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.startsWith('rec_')&&k.replace('rec_','')>=cutoffStr)keys.push(k);}
+  const keys=CharkoStorage.keys().filter(k=>k.startsWith('rec_')&&k.replace('rec_','')>=cutoffStr);
   const logs=keys.sort().map(k=>{const rec=loadRec(k);return{date:k.replace('rec_',''),...(rec.data||rec)};});
   const json=JSON.stringify(logs,null,2);
   const fb=document.getElementById('ai-export-fallback');
@@ -4579,11 +4578,8 @@ async function requestAIFeedback(forceRefresh=false){
     const cutoff = new Date(getSelDate()+'T00:00:00');
     cutoff.setDate(cutoff.getDate() - days + 1);
     const cutoffStr = cutoff.toISOString().slice(0,10);
-    const keys = [];
-    for(let i=0;i<localStorage.length;i++){
-      const k=localStorage.key(i);
-      if(k&&k.startsWith('rec_')&&k.replace('rec_','')>=cutoffStr&&k.replace('rec_','')!==getSelDate()) keys.push(k);
-    }
+    const keys = CharkoStorage.keys()
+      .filter(k=>k.startsWith('rec_')&&k.replace('rec_','')>=cutoffStr&&k.replace('rec_','')!==getSelDate());
     keys.sort().reverse();
     if(keys.length){
       const lines = keys.slice(0,days-1).map(k=>{
