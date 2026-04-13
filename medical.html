@@ -6,10 +6,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>受診記録</title>
 <!-- Charko 共通モジュール -->
-<link rel="stylesheet" href="styles.css">
-<script src="api.js"></script>
-<script src="ui.js"></script>
-<script src="storage.js"></script>
+<link rel="stylesheet" href="common/styles.css">
+<script src="common/api.js"></script>
+<script src="common/ui.js"></script>
+<script src="common/storage.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&family=DM+Mono:wght@400;500&display=swap');
 :root{
@@ -406,7 +406,7 @@ textarea{resize:vertical;min-height:80px;line-height:1.6;}
         </div>
       </div>
 
-      <button class="save-btn" onclick="saveVisit()" style="margin-top:10px">✅ 受診記録を保存</button>
+      <button class="save-btn" onclick="saveVisit(this)" style="margin-top:10px">✅ 受診記録を保存</button>
     </div>
   </div>
 
@@ -841,7 +841,7 @@ function importTrackerData(){
 }
 
 // ── 受診記録保存 ──
-async function saveVisit(){
+async function saveVisit(btn){
   const date=document.getElementById('v-date').value;
   if(!date){showToast('⚠️ 受診日を入力してください');return;}
 
@@ -886,16 +886,27 @@ async function saveVisit(){
     if(r.ok) showToast('📅 カレンダーに登録しました');
     else if(r.reason&&r.reason!=='GAS URLが設定されていません。設定タブからURLを入力してください') console.warn('GAS calendar error:',r.reason);
   }
+
+  // ── スプレッドシート同期（ボタングレーアウト + subテキスト対応） ──
   const sheetSync=document.getElementById('v-sync-sheet');
-  if(sheetSync&&sheetSync.checked){
-    syncToGAS('addVisit',{
+  const gasConfig=LS.gas();
+  if((sheetSync&&sheetSync.checked)||gasConfig.sheetAuto){
+    const r=await CharkoAPI.gasPost({
+      app:'medical',action:'saveVisit',
       date:visit.date,time:visit.time,
       clinic:visit.clinic,doctor:visit.doctor,type:visit.type,
       told:visit.told,heard:visit.heard,
       rx:visit.rx,rxMemo:visit.rxMemo,lab:visit.lab,
       nextDate:visit.nextDate,
       cost:visit.cost,drugCost:visit.drugCost,payment:visit.payment
-    });
+    },btn);
+    if(r.success){
+      showToast('✅ 受診記録を保存しました','var(--a3)',2500,r.sheetName||'medical_visits に保存');
+    }else{
+      showToast('⚠️ スプシ同期失敗','var(--a4)',4000,r.error_message);
+    }
+  }else{
+    showToast('✅ 受診記録を保存しました');
   }
 
   // フォームリセット
@@ -906,7 +917,6 @@ async function saveVisit(){
   document.getElementById('voice-told-result').textContent='ここに文字起こし結果が表示されます';
   document.getElementById('voice-heard-result').textContent='ここに文字起こし結果が表示されます';
 
-  showToast('✅ 受診記録を保存しました');
   renderHome();
 }
 
@@ -932,7 +942,7 @@ function syncToKakeibo(visit){
 //   タイムアウト(10秒)・エラー分類・JSON解析を自動で行う。
 //   GAS URLは setGasUrl() で登録済みなので引数不要。
 async function syncToGAS(action, payload){
-  const res=await CharkoAPI.gasPost({action,...payload});
+  const res=await CharkoAPI.gasPost({app:'medical',action,...payload});
   if(!res.success){
     console.warn('[medical] GAS同期失敗:',res.error_message,res.error_detail);
     return {ok:false,reason:res.error_message};
@@ -1335,9 +1345,6 @@ function importData(input){
   reader.readAsText(file);input.value='';
 }
 
-// ── トースト ──
-function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500);}
-
 // ── AI設定 ──
 function updateAIProvider(){
   const provider=document.getElementById('ai-provider').value;
@@ -1400,8 +1407,9 @@ document.addEventListener('DOMContentLoaded',()=>{
   // ── バージョン情報（ui.js の initAppMeta で生成） ──
   // 他のアプリも同じ形式で呼ぶだけでヘッダーと設定タブに反映される
   initAppMeta({
-    version: 'v1.3',
+    version: 'v1.4',
     history: [
+      { v: 'v1.4', date: '2026/04/14', note: 'common/パス修正・saveVisitボタングレーアウト対応・showToast共通化・GASにapp引数追加' },
       { v: 'v1.3', date: '2026/04/10', note: '受診準備を記録タブに統合・医療機関セレクト＋自由記述入力欄を追加' },
       { v: 'v1.2', date: '2026/04/10', note: 'AI分析をGASプロキシ方式に変更・Gemini出力を箇条書きに変更' },
       { v: 'v1.1', date: '2026/04/09', note: 'タブ構成整理・アコーディオン化・AI設定追加' },
