@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<meta name="deployed-at" content="2026-04-13T14:17:01.247Z">
+<meta name="deployed-at" content="2026-04-13T22:59:33.047Z">
 <title>日次記録</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -102,6 +102,7 @@ label{display:block;font-size:9px;color:var(--t2);font-weight:600;letter-spacing
 /* 保存ボタン */
 .save-btn{width:100%;padding:12px;border-radius:var(--r);border:none;font-size:14px;font-family:'Noto Sans JP',sans-serif;font-weight:500;cursor:pointer;margin-top:4px;transition:all .2s;}
 .save-btn:active{transform:scale(.98);}
+.save-btn:disabled{opacity:0.4;cursor:not-allowed;pointer-events:none;}
 .btn-morning{background:linear-gradient(135deg,#c09030,#a06020);color:#fff;}
 .btn-noon{background:linear-gradient(135deg,#306090,#204070);color:#fff;}
 .btn-night{background:linear-gradient(135deg,#6030a0,#401060);color:#fff;}
@@ -200,8 +201,9 @@ label{display:block;font-size:9px;color:var(--t2);font-weight:600;letter-spacing
 /* トースト */
 .toast-ov{position:fixed;top:0;left:0;right:0;bottom:0;display:flex;align-items:center;justify-content:center;z-index:99999;pointer-events:none;opacity:0;transition:opacity .3s;}
 .toast-ov.show{opacity:1;}
-.toast-box{background:var(--accent);color:#fff;padding:14px 26px;border-radius:12px;font-size:14px;font-weight:500;box-shadow:0 8px 32px rgba(0,0,0,.5);transform:scale(.8);transition:transform .3s;max-width:85vw;text-align:center;}
+.toast-box{background:var(--accent);color:#fff;padding:12px 24px;border-radius:12px;font-size:14px;font-weight:500;box-shadow:0 8px 32px rgba(0,0,0,.5);transform:scale(.8);transition:transform .3s;max-width:85vw;text-align:center;}
 .toast-ov.show .toast-box{transform:scale(1);}
+.toast-sub{font-size:10px;font-weight:400;opacity:.8;margin-top:4px;letter-spacing:.04em;}
 /* エラーオーバーレイ */
 .overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:200;display:none;align-items:center;justify-content:center;padding:20px;}
 .overlay.show{display:flex;}
@@ -1635,7 +1637,7 @@ label{display:block;font-size:9px;color:var(--t2);font-weight:600;letter-spacing
 <!-- ─── トースト
 
 <!-- ─── トースト ─── -->
-<div class="toast-ov" id="toast-overlay"><div class="toast-box" id="toast-box"></div></div>
+<div class="toast-ov" id="toast-overlay"><div class="toast-box" id="toast-box"><div id="toast-main"></div><div class="toast-sub" id="toast-sub" style="display:none"></div></div></div>
 
 <!-- ─── エラーダイアログ ─── -->
 <div class="overlay" id="err-overlay">
@@ -1734,14 +1736,23 @@ function saveRec(updates,k){
   CharkoStorage.save(`rec_${k}`,rec);
 }
 
-/** 保存後にGASへ自動同期（CharkoAPI経由、成否をboolで返す） */
-async function autoSyncToGAS(k){
-  if(!window.CHARKO_GAS_URL)return false;
-  k=k||getSelDate();
-  const rec=loadRec(k);
-  // 【callGAS とは】app名・action名でルーティングするapi.jsの共通関数
-  const res=await CharkoAPI.callGAS('tracker','save',{...rec.data,date:k});
-  return res.success;
+/**
+ * 保存後にGASへ自動同期（CharkoAPI経由）
+ * @param {string} [k] - 日付キー（省略時は選択中の日付）
+ * @param {HTMLElement} [btn] - 通信中にグレーアウトするボタン
+ * @returns {{ success: boolean, sheetName: string, error_message: string }} 
+ */
+async function autoSyncToGAS(k, btn){
+  if(!window.CHARKO_GAS_URL) return { success: false, sheetName: '', error_message: 'GAS URL未設定' };
+  k = k || getSelDate();
+  const rec = loadRec(k);
+  // options.button を渡すと api.js が自動でグレーアウト→復元してくれる
+  const res = await CharkoAPI.callGAS('tracker', 'save', {...rec.data, date: k}, { button: btn });
+  return {
+    success      : res.success,
+    sheetName    : res.success ? (res.data && res.data.sheetName ? res.data.sheetName : 'tracker_data') : '',
+    error_message: res.success ? '' : (res.error_message || '同期失敗'),
+  };
 }
 
 /** フィードバックを追記（上書き禁止・配列に追加） */
@@ -1807,11 +1818,16 @@ function copyErrDetail(){
 // ═══════════════════════════════════════════════
 // トースト
 // ═══════════════════════════════════════════════
-function showToast(msg,color){
+function showToast(msg,color,duration,sub){
   const ov=document.getElementById('toast-overlay');
   const box=document.getElementById('toast-box');
-  box.textContent=msg;box.style.background=color||'var(--accent)';
-  ov.classList.add('show');setTimeout(()=>ov.classList.remove('show'),2200);
+  const mainEl=document.getElementById('toast-main');
+  const subEl=document.getElementById('toast-sub');
+  mainEl.textContent=msg;
+  box.style.background=color||'var(--accent)';
+  if(subEl){subEl.textContent=sub||'';subEl.style.display=sub?'':'none';}
+  ov.classList.add('show');
+  setTimeout(()=>ov.classList.remove('show'),duration||2200);
 }
 
 // ═══════════════════════════════════════════════
@@ -2527,8 +2543,9 @@ async function saveMorning(){
     symptoms:getSymptoms(),condition:document.getElementById('condition-m').value,
     weatherHpa:w.hpa||null,weatherLabel:w.weather||null,weatherIcon:w.icon||null,
   });
-  const synced=await autoSyncToGAS();
-  showToast(synced?'🌅 朝の記録を保存しました ✅':'🌅 朝の記録を保存しました ⚠️ スプシ同期失敗','#c09030');
+  const btn=document.querySelector('.btn-morning');
+  const r=await autoSyncToGAS(null,btn);
+  if(r.success){showToast('朝の記録を保存しました','#c09030',2500,r.sheetName+' に保存');}else{showToast('朝の記録: スプシ同期失敗','var(--a2)',4000,r.error_message);}
 }
 async function saveNoon(){
   saveRec({
@@ -2546,8 +2563,9 @@ async function saveNoon(){
     attendReason:document.getElementById('attend-reason-text').value||document.getElementById('attend-reason-text2').value,
     attendMemo:document.getElementById('attend-memo').value,
   });
-  const synced=await autoSyncToGAS();
-  showToast(synced?'☀️ 昼の記録を保存しました ✅':'☀️ 昼の記録を保存しました ⚠️ スプシ同期失敗','#306090');
+  const btn=document.querySelector('.btn-noon');
+  const r=await autoSyncToGAS(null,btn);
+  if(r.success){showToast('昼の記録を保存しました','#306090',2500,r.sheetName+' に保存');}else{showToast('昼の記録: スプシ同期失敗','var(--a2)',4000,r.error_message);}
 }
 async function saveNight(){
   saveRec({
@@ -2566,8 +2584,9 @@ async function saveNight(){
     diary:document.getElementById('diary').value,
     notes:document.getElementById('notes').value,
   });
-  const synced=await autoSyncToGAS();
-  showToast(synced?'🌙 夜の記録を保存しました ✅':'🌙 夜の記録を保存しました ⚠️ スプシ同期失敗','#6030a0');
+  const btn=document.querySelector('.btn-night');
+  const r=await autoSyncToGAS(null,btn);
+  if(r.success){showToast('夜の記録を保存しました','#6030a0',2500,r.sheetName+' に保存');}else{showToast('夜の記録: スプシ同期失敗','var(--a2)',4000,r.error_message);}
   sendAIFeedback('night');
 }
 async function saveRecord(){
@@ -2580,8 +2599,9 @@ async function saveRecord(){
     kotaReason:document.getElementById('kota-reason')?.value||'',
     // wakeupEntriesはaddWakeupEntry/updateWakeupEntryMemoで個別保存済み
   });
-  const synced=await autoSyncToGAS();
-  showToast(synced?'📓 記録を保存しました ✅':'📓 記録を保存しました ⚠️ スプシ同期失敗','#8040a0');
+  const btn=document.querySelector('.btn-record');
+  const r=await autoSyncToGAS(null,btn);
+  if(r.success){showToast('記録を保存しました','#8040a0',2500,r.sheetName+' に保存');}else{showToast('記録: スプシ同期失敗','var(--a2)',4000,r.error_message);}
   renderPeriodPrediction();
   sendAIFeedback('record');
 }
