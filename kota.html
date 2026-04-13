@@ -7,10 +7,10 @@
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <!-- Charko 共通モジュール -->
-<link rel="stylesheet" href="styles.css">
-<script src="api.js"></script>
-<script src="ui.js"></script>
-<script src="storage.js"></script>
+<link rel="stylesheet" href="common/styles.css">
+<script src="common/api.js"></script>
+<script src="common/ui.js"></script>
+<script src="common/storage.js"></script>
 <style>
 :root{
   --bg:#0d1117;--s1:#161b22;--s2:#1c2128;--s3:#21262d;
@@ -935,16 +935,15 @@ function saveGasUrl() {
 
 // 【CharkoAPI.callGAS とは】api.js の共通関数。app名・action名でルーティングする。
 //   タイムアウト(10秒)・エラー分類・リトライを内包。GAS URLは setGasUrl() で登録済み。
+//   options.button にボタン要素を渡すと通信中に自動でグレーアウトされる。
 async function syncToGAS() {
   const badge = document.getElementById('sync-badge');
-  badge.textContent = '送信中...'; badge.disabled = true;
-  const result = await CharkoAPI.callGAS('kota', 'save', { logs: loadLogs() });
-  badge.disabled = false; badge.textContent = '↑ スプシ保存';
+  const result = await CharkoAPI.callGAS('kota', 'save', { logs: loadLogs() }, { button: badge });
   if (result.success) {
     document.getElementById('header-sub').textContent = '✅ ' + new Date().toLocaleTimeString('ja-JP', {hour:'2-digit', minute:'2-digit'}) + ' 同期済み';
-    showToast('✅ スプシに保存しました');
+    showToast('✅ スプシに保存しました', 'var(--a3)', 2500, result.sheetName || 'kota_data に保存');
   } else {
-    showToast('❌ ' + (result.error_message || 'エラー'), 'error');
+    showToast('❌ 同期失敗', 'var(--a4)', 4000, result.error_message);
   }
 }
 
@@ -965,14 +964,7 @@ function clearAll() {
   CharkoStorage.remove(LS_KEY); showToast('🗑 削除しました');
 }
 
-// ── トースト ─────────────────────────────────
-function showToast(msg, type = 'success') {
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.style.borderColor = type === 'error' ? '#f85149' : 'var(--border)';
-  t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), 2500);
-}
+// showToast は common/ui.js の共通関数を使用
 </script>
 </body>
 </html>
