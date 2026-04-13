@@ -620,6 +620,8 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent);}
     <div class="acc-b" id="acc-backup">
       <button class="set-btn green" onclick="exportJson()">📤 JSONでバックアップ</button>
       <label style="display:block;cursor:pointer"><input type="file" id="import-file" accept=".json" style="display:none" onchange="importJson(this)"><div class="set-btn" onclick="document.getElementById('import-file').click()">📥 JSONから復元</div></label>
+      <button class="set-btn" style="border-color:var(--accent);color:var(--accent)" id="restore-gas-btn" onclick="restoreFromGAS()">☁️ スプシから復元</button>
+      <div id="restore-status" style="font-size:11px;color:var(--t2);margin-top:4px;text-align:center"></div>
       <button class="set-btn red" onclick="clearAll()">🗑 全データ削除</button>
     </div>
   </div>
@@ -802,9 +804,26 @@ function saveLog(cat) {
   logs.unshift(log);
   saveLogs(logs);
   resetCatForm(cat, prefix);
-  btn.disabled = true;
-  showToast('✅ ' + cat + 'を記録しました');
-  setTimeout(() => { btn.disabled = false; }, 1000);
+
+  // ── スプシに即時同期（GAS URL設定済みの場合） ──
+  // btn はグレーアウト済みのまま通信中も維持し、完了後に解除する
+  const s = loadSettings();
+  if (s.gasUrl) {
+    CharkoAPI.callGAS('kota', 'save', { logs: loadLogs() }, { button: btn })
+      .then(result => {
+        if (result.success) {
+          document.getElementById('header-sub').textContent =
+            '✅ ' + new Date().toLocaleTimeString('ja-JP', {hour:'2-digit', minute:'2-digit'}) + ' 同期済み';
+          showToast('✅ ' + cat + 'を記録・保存しました', 'var(--a3)', 2500, result.sheetName || 'kota_data に保存');
+        } else {
+          showToast('⚠️ ローカル保存済み・スプシ同期失敗', 'var(--a4)', 4000, result.error_message);
+          btn.disabled = false;
+        }
+      });
+  } else {
+    showToast('✅ ' + cat + 'を記録しました');
+    setTimeout(() => { btn.disabled = false; }, 1000);
+  }
 }
 
 function resetCatForm(cat, prefix) {
@@ -958,6 +977,30 @@ function importJson(input) {
   const r = new FileReader();
   r.onload = e => { try { saveLogs(JSON.parse(e.target.result)); showToast('✅ 復元しました'); } catch { showToast('❌ 読み込み失敗', 'error'); } };
   if (input.files[0]) r.readAsText(input.files[0]);
+}
+
+// ── スプシから復元 ────────────────────────────
+async function restoreFromGAS() {
+  const btn = document.getElementById('restore-gas-btn');
+  const statusEl = document.getElementById('restore-status');
+  const s = loadSettings();
+  if (!s.gasUrl) {
+    showToast('⚠️ GAS URLが未設定です', 'error');
+    statusEl.textContent = '設定タブでGAS URLを入力してください';
+    return;
+  }
+  statusEl.textContent = '☁️ スプシからデータを取得中...';
+  const result = await CharkoAPI.callGAS('kota', 'load', {}, { button: btn });
+  if (result.success && result.data && Array.isArray(result.data.logs)) {
+    const logs = result.data.logs;
+    saveLogs(logs);
+    renderLog();
+    statusEl.textContent = `✅ ${logs.length}件を復元しました（${new Date().toLocaleString('ja-JP')}）`;
+    showToast('✅ スプシから ' + logs.length + '件を復元しました', 'var(--a3)', 3000);
+  } else {
+    statusEl.textContent = '❌ 取得失敗: ' + (result.error_message || '不明なエラー');
+    showToast('❌ 復元失敗', 'error');
+  }
 }
 function clearAll() {
   if (!confirm('全データを削除します。よいですか？')) return;
