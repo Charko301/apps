@@ -30,41 +30,39 @@ let toastTimer = null;
 
 /**
  * トースト通知を表示
- * 
- * @param {string} message - 表示メッセージ
- * @param {string} type - 通知タイプ（'success'|'error'|'info'|'warning'）
- * @param {number} duration - 表示時間（ミリ秒、デフォルト2000）
- * 
+ *
+ * @param {string} message  - メインメッセージ（大きく表示）
+ * @param {string} type     - 通知タイプ（'success'|'error'|'info'|'warning'）
+ * @param {number} duration - 表示時間（ミリ秒、デフォルト2500）
+ * @param {string} [sub]    - サブテキスト（小さく表示。保存先シート名など）
+ *
  * @example
  * showToast('保存しました', 'success');
- * showToast('エラーが発生しました', 'error', 3000);
+ * showToast('保存しました', 'success', 2500, 'tracker_data シート');
  */
-function showToast(message, type = 'info', duration = 2000) {
+function showToast(message, type = 'info', duration = 2500, sub = '') {
   // トースト要素を作成（初回のみ）
   if (!toastElement) {
     toastElement = document.createElement('div');
     toastElement.className = 'toast-ov';
-    toastElement.innerHTML = '<div class="toast-box"></div>';
+    toastElement.innerHTML = `
+      <div class="toast-box">
+        <div class="toast-main"></div>
+        <div class="toast-sub"></div>
+      </div>`;
     document.body.appendChild(toastElement);
   }
 
   // 既存のタイマーをクリア
-  if (toastTimer) {
-    clearTimeout(toastTimer);
-  }
-
-  // タイプに応じたアイコン
-  const icons = {
-    success: '✅',
-    error: '❌',
-    info: 'ℹ️',
-    warning: '⚠️'
-  };
-  const icon = icons[type] || icons.info;
+  if (toastTimer) clearTimeout(toastTimer);
 
   // メッセージ設定
   const box = toastElement.querySelector('.toast-box');
-  box.textContent = `${icon} ${message}`;
+  box.querySelector('.toast-main').textContent = message;
+
+  const subEl = box.querySelector('.toast-sub');
+  subEl.textContent = sub;
+  subEl.style.display = sub ? '' : 'none';
 
   // 表示
   toastElement.classList.add('show');
@@ -277,6 +275,232 @@ function handleApiResult(result, successMessage = '完了しました') {
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// タブ初期化
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+/**
+ * タブナビゲーションを初期化する。
+ * .tab-btn[data-tab] と #tab-{name} の対応で自動的に切り替える。
+ * モバイル（横並び）・PC（縦サイドバー）どちらの構造でも動作。
+ *
+ * 【前提条件】HTML側の構造：
+ *   <button class="tab-btn active" data-tab="record">記録</button>
+ *   <div class="tab-content" id="tab-record">...</div>
+ *
+ * @param {Object} [options]
+ * @param {string} [options.defaultTab] - 初期表示するタブ名（省略時は最初の.tab-btn）
+ * @param {Function} [options.onSwitch] - タブ切り替え時のコールバック (tabName) => {}
+ *
+ * @example
+ * initTabs();
+ * initTabs({ defaultTab: 'history', onSwitch: (name) => console.log(name) });
+ */
+function initTabs(options = {}) {
+  // .tab-btn はモバイル用・PC用の両方を含む場合があるため querySelectorAll で全取得
+  const buttons = document.querySelectorAll('.tab-btn');
+  const contents = document.querySelectorAll('.tab-content');
+
+  if (buttons.length === 0) {
+    console.warn('[CharkoUI] .tab-btn が見つかりません');
+    return;
+  }
+
+  /**
+   * 指定タブに切り替える内部関数
+   * @param {string} tabName - data-tab の値
+   */
+  function switchTab(tabName) {
+    // ボタン状態更新（同じ data-tab を持つボタンをすべて active 化）
+    buttons.forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.tab === tabName);
+    });
+
+    // コンテンツ表示切替
+    contents.forEach(content => {
+      const isTarget = content.id === 'tab-' + tabName;
+      content.style.display = isTarget ? '' : 'none';
+    });
+
+    // コールバック
+    if (typeof options.onSwitch === 'function') {
+      options.onSwitch(tabName);
+    }
+
+    console.log('[CharkoUI] タブ切り替え:', tabName);
+  }
+
+  // クリックイベント設定
+  buttons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      switchTab(btn.dataset.tab);
+    });
+  });
+
+  // 初期タブを表示
+  const defaultTab = options.defaultTab
+    || document.querySelector('.tab-btn.active')?.dataset.tab
+    || buttons[0]?.dataset.tab;
+
+  if (defaultTab) {
+    switchTab(defaultTab);
+  }
+
+  // グローバルに切り替え関数を公開（外部から呼べるように）
+  window._charkoSwitchTab = switchTab;
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// 数値入力ショートカット変換
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+/**
+ * 数値 + Enter で各形式に自動変換する関数。
+ *
+ * 【変換ルール】
+ *   時刻モード（type='time'）:
+ *     8    → 8:00    （1桁 = 時、分は00）
+ *     83   → 8:30    （末尾1桁が1〜5 = ×10分）
+ *     810  → 8:10    （3桁以上 = 最後2桁が分）
+ *     1430 → 14:30   （4桁 = HHmm）
+ *
+ *   時間モード（type='duration'）:
+ *     90   → 1:30    （分数 → h:mm 表示）
+ *     30   → 0:30
+ *     120  → 2:00
+ *
+ *   金額モード（type='money'）:
+ *     9000  → 9,000  （3桁カンマ区切り）
+ *     10000 → 10,000
+ *
+ * 【使い方】
+ *   // 個別のinputに設定
+ *   convertNumericInput(document.getElementById('start-time'), 'time');
+ *   convertNumericInput(document.getElementById('sleep-duration'), 'duration');
+ *   convertNumericInput(document.getElementById('amount'), 'money');
+ *
+ *   // data属性で一括設定（initNumericInputs()推奨）
+ *   <input data-convert="time">
+ *   <input data-convert="duration">
+ *   <input data-convert="money">
+ *
+ * @param {HTMLInputElement} inputEl - 対象のinput要素
+ * @param {'time'|'duration'|'money'} type - 変換タイプ
+ */
+function convertNumericInput(inputEl, type) {
+  if (!inputEl) return;
+
+  inputEl.addEventListener('keydown', function(e) {
+    // Enter キーのみ処理（Shift+Enter は除外）
+    if (e.key !== 'Enter' || e.shiftKey) return;
+
+    const raw = this.value.trim();
+    // 数字のみの場合に変換（すでに :  , を含む場合はスキップ）
+    if (!/^\d+$/.test(raw)) return;
+
+    const num = parseInt(raw, 10);
+    let converted = raw;
+
+    if (type === 'time') {
+      converted = _convertTime(raw, num);
+    } else if (type === 'duration') {
+      converted = _convertDuration(num);
+    } else if (type === 'money') {
+      converted = _convertMoney(num);
+    }
+
+    if (converted !== raw) {
+      this.value = converted;
+      // input イベントを発火（他のリスナーへ通知）
+      this.dispatchEvent(new Event('input', { bubbles: true }));
+      console.log(`[CharkoUI] 数値変換 (${type}): ${raw} → ${converted}`);
+    }
+
+    // デフォルトのEnter動作（フォーム送信など）を防ぐ
+    e.preventDefault();
+  });
+}
+
+/**
+ * 時刻変換ロジック
+ * @param {string} raw - 入力文字列
+ * @param {number} num - 数値
+ * @returns {string}
+ * @private
+ */
+function _convertTime(raw, num) {
+  if (raw.length === 1) {
+    // 1桁: 8 → 8:00
+    return `${num}:00`;
+  } else if (raw.length === 2) {
+    const h = parseInt(raw[0], 10);
+    const m = parseInt(raw[1], 10);
+    // 末尾が 1〜5 → ×10分。0 or 6〜9 → そのまま分
+    const min = (m >= 1 && m <= 5) ? m * 10 : m;
+    return `${h}:${String(min).padStart(2, '0')}`;
+  } else if (raw.length === 3) {
+    // 3桁: 810 → 8:10
+    const h = parseInt(raw[0], 10);
+    const m = parseInt(raw.slice(1), 10);
+    if (m >= 0 && m < 60) return `${h}:${String(m).padStart(2, '0')}`;
+  } else if (raw.length === 4) {
+    // 4桁: 1430 → 14:30
+    const h = parseInt(raw.slice(0, 2), 10);
+    const m = parseInt(raw.slice(2), 10);
+    if (h < 24 && m < 60) return `${h}:${String(m).padStart(2, '0')}`;
+  }
+  return raw; // 変換不能はそのまま
+}
+
+/**
+ * 時間（分数）変換ロジック
+ * @param {number} totalMinutes
+ * @returns {string}
+ * @private
+ */
+function _convertDuration(totalMinutes) {
+  const h = Math.floor(totalMinutes / 60);
+  const m = totalMinutes % 60;
+  return `${h}:${String(m).padStart(2, '0')}`;
+}
+
+/**
+ * 金額変換ロジック（3桁カンマ）
+ * @param {number} num
+ * @returns {string}
+ * @private
+ */
+function _convertMoney(num) {
+  return num.toLocaleString('ja-JP');
+}
+
+/**
+ * data-convert 属性を持つ input を一括で変換設定する。
+ * DOMContentLoaded 後に1回呼ぶだけでOK。
+ *
+ * @example
+ * document.addEventListener('DOMContentLoaded', () => {
+ *   initNumericInputs();
+ * });
+ *
+ * HTML:
+ * <input type="text" data-convert="time" placeholder="例: 830">
+ * <input type="text" data-convert="duration" placeholder="例: 90">
+ * <input type="text" data-convert="money" placeholder="例: 9000">
+ */
+function initNumericInputs() {
+  const inputs = document.querySelectorAll('input[data-convert]');
+  inputs.forEach(input => {
+    const type = input.dataset.convert;
+    if (['time', 'duration', 'money'].includes(type)) {
+      convertNumericInput(input, type);
+    }
+  });
+  if (inputs.length > 0) {
+    console.log(`[CharkoUI] 数値入力ショートカット設定: ${inputs.length}件`);
+  }
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // アプリメタ情報（バージョン番号・履歴）
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -337,13 +561,19 @@ if (typeof window !== 'undefined') {
     showError,
     confirm,
     handleApiResult,
-    initAppMeta
+    initAppMeta,
+    initTabs,
+    convertNumericInput,
+    initNumericInputs
   };
 
-  // グローバルにも公開（各アプリから initAppMeta() と直接呼べる）
+  // グローバルにも公開（各アプリから直接呼べる）
   window.initAppMeta = initAppMeta;
+  window.initTabs = initTabs;
+  window.initNumericInputs = initNumericInputs;
+  window.convertNumericInput = convertNumericInput;
 
-  console.log('[CharkoUI] モジュール読み込み完了 v1.1.0');
+  console.log('[CharkoUI] モジュール読み込み完了 v1.2.0');
 }
 
 if (typeof module !== 'undefined' && module.exports) {
@@ -354,6 +584,9 @@ if (typeof module !== 'undefined' && module.exports) {
     showError,
     confirm,
     handleApiResult,
-    initAppMeta
+    initAppMeta,
+    initTabs,
+    convertNumericInput,
+    initNumericInputs
   };
 }
