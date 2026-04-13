@@ -6,10 +6,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>受診記録</title>
 <!-- Charko 共通モジュール -->
-<link rel="stylesheet" href="./common/styles.css">
-<script src="./common/api.js"></script>
-<script src="./common/ui.js"></script>
-<script src="./common/storage.js"></script>
+<link rel="stylesheet" href="styles.css">
+<script src="api.js"></script>
+<script src="ui.js"></script>
+<script src="storage.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&family=DM+Mono:wght@400;500&display=swap');
 :root{
@@ -711,19 +711,23 @@ textarea{resize:vertical;min-height:80px;line-height:1.6;}
 <div class="toast" id="toast"></div>
 
 <script>
+// LS: localStorage操作を CharkoStorage（storage.js）に委譲
+// 【CharkoStorage とは】storage.js の共通モジュール。
+//   キーに 'charko_' プレフィックスを自動付与し、JSON化・エラー処理・バージョン管理を行う。
+//   例: 'med_visits' → localStorage の 'charko_med_visits' に保存される。
 const LS={
-  visits:()=>JSON.parse(localStorage.getItem('med_visits')||'[]'),
-  saveVisits:v=>localStorage.setItem('med_visits',JSON.stringify(v)),
-  meds:()=>JSON.parse(localStorage.getItem('med_meds')||'[]'),
-  saveMeds:m=>localStorage.setItem('med_meds',JSON.stringify(m)),
-  clinics:()=>JSON.parse(localStorage.getItem('med_clinics')||'[]'),
-  saveClinics:c=>localStorage.setItem('med_clinics',JSON.stringify(c)),
-  gas:()=>JSON.parse(localStorage.getItem('med_gas')||'{}'),
-  saveGas:g=>localStorage.setItem('med_gas',JSON.stringify(g)),
-  dupLogs:()=>JSON.parse(localStorage.getItem('med_dup_logs')||'[]'),
-  saveDupLogs:d=>localStorage.setItem('med_dup_logs',JSON.stringify(d)),
-  aiConfig:()=>JSON.parse(localStorage.getItem('med_ai_config')||'{"provider":"gemini"}'),
-  saveAiConfig:c=>localStorage.setItem('med_ai_config',JSON.stringify(c))
+  visits:      ()=>CharkoStorage.load('med_visits',[]),
+  saveVisits:  v =>CharkoStorage.save('med_visits',v),
+  meds:        ()=>CharkoStorage.load('med_meds',[]),
+  saveMeds:    m =>CharkoStorage.save('med_meds',m),
+  clinics:     ()=>CharkoStorage.load('med_clinics',[]),
+  saveClinics: c =>CharkoStorage.save('med_clinics',c),
+  gas:         ()=>CharkoStorage.load('med_gas',{}),
+  saveGas:     g =>CharkoStorage.save('med_gas',g),
+  dupLogs:     ()=>CharkoStorage.load('med_dup_logs',[]),
+  saveDupLogs: d =>CharkoStorage.save('med_dup_logs',d),
+  aiConfig:    ()=>CharkoStorage.load('med_ai_config',{provider:'gemini'}),
+  saveAiConfig:c =>CharkoStorage.save('med_ai_config',c)
 };
 
 let photoData=[];
@@ -870,31 +874,28 @@ async function saveVisit(){
     syncToKakeibo(visit);
   }
 
-  // ── GAS連携 ──
-  const g=LS.gas();
-  if(g.url){
-    const calSync=document.getElementById('v-cal-sync');
-    if(visit.nextDate&&calSync&&calSync.checked){
-      const r=await syncToGAS('addCalendar',{
-        title:`受診：${visit.clinic||visit.doctor||'受診'}`,
-        date:visit.nextDate,
-        time:visit.nextTime||'',
-        description:`【${visit.type||''}】${visit.nextMemo||''}`
-      });
-      if(r.ok) showToast('📅 カレンダーに登録しました');
-      else if(r.reason) console.warn('GAS calendar error:',r.reason);
-    }
-    const sheetSync=document.getElementById('v-sync-sheet');
-    if(sheetSync&&sheetSync.checked){
-      syncToGAS('addVisit',{
-        date:visit.date,time:visit.time,
-        clinic:visit.clinic,doctor:visit.doctor,type:visit.type,
-        told:visit.told,heard:visit.heard,
-        rx:visit.rx,rxMemo:visit.rxMemo,lab:visit.lab,
-        nextDate:visit.nextDate,
-        cost:visit.cost,drugCost:visit.drugCost,payment:visit.payment
-      });
-    }
+  // ── GAS連携（URL未設定の場合は CharkoAPI が自動でスキップ） ──
+  const calSync=document.getElementById('v-cal-sync');
+  if(visit.nextDate&&calSync&&calSync.checked){
+    const r=await syncToGAS('addCalendar',{
+      title:`受診：${visit.clinic||visit.doctor||'受診'}`,
+      date:visit.nextDate,
+      time:visit.nextTime||'',
+      description:`【${visit.type||''}】${visit.nextMemo||''}`
+    });
+    if(r.ok) showToast('📅 カレンダーに登録しました');
+    else if(r.reason&&r.reason!=='GAS URLが設定されていません。設定タブからURLを入力してください') console.warn('GAS calendar error:',r.reason);
+  }
+  const sheetSync=document.getElementById('v-sync-sheet');
+  if(sheetSync&&sheetSync.checked){
+    syncToGAS('addVisit',{
+      date:visit.date,time:visit.time,
+      clinic:visit.clinic,doctor:visit.doctor,type:visit.type,
+      told:visit.told,heard:visit.heard,
+      rx:visit.rx,rxMemo:visit.rxMemo,lab:visit.lab,
+      nextDate:visit.nextDate,
+      cost:visit.cost,drugCost:visit.drugCost,payment:visit.payment
+    });
   }
 
   // フォームリセット
@@ -911,7 +912,8 @@ async function saveVisit(){
 
 function syncToKakeibo(visit){
   try{
-    const txs=JSON.parse(localStorage.getItem('kb_tx')||'[]');
+    // 'kb_tx' は kakeibo.html が管理するキー。CharkoStorage 経由で統一する。
+    const txs=CharkoStorage.load('kb_tx',[]);
     const total=visit.cost+visit.drugCost;
     txs.push({
       id:`med_${visit.id}`,date:visit.date,amount:total,
@@ -921,26 +923,21 @@ function syncToKakeibo(visit){
       memo:`診察費${visit.cost}円+薬代${visit.drugCost}円`,
       fromTracker:false,maniaRisk:null,
     });
-    localStorage.setItem('kb_tx',JSON.stringify(txs));
-  }catch{}
+    CharkoStorage.save('kb_tx',txs);
+  }catch(e){console.error('[medical] syncToKakeibo失敗:',e);}
 }
 
 // ── GAS同期 ──
-// 送信形式は統一仕様: {app:'medical', action, data:{...}}
+// 【CharkoAPI.gasPost とは】api.js の共通関数。
+//   タイムアウト(10秒)・エラー分類・JSON解析を自動で行う。
+//   GAS URLは setGasUrl() で登録済みなので引数不要。
 async function syncToGAS(action, payload){
-  const g=LS.gas();
-  if(!g.url) return {ok:false,reason:'no_url'};
-  try{
-    const res=await fetch(g.url,{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({app:'medical', action, data:payload})
-    });
-    const data=await res.json();
-    return {ok:data.success!==false};
-  }catch(e){
-    return {ok:false,reason:e.message};
+  const res=await CharkoAPI.gasPost({action,...payload});
+  if(!res.success){
+    console.warn('[medical] GAS同期失敗:',res.error_message,res.error_detail);
+    return {ok:false,reason:res.error_message};
   }
+  return {ok:true};
 }
 
 // ── AI API 共通関数 ──
@@ -993,6 +990,8 @@ function saveGasSettings(){
   const sheetAuto=document.getElementById('gas-sheet-auto').checked;
   const dupAuto=document.getElementById('gas-dup-auto').checked;
   LS.saveGas({url,calAuto,sheetAuto,dupAuto});
+  // CharkoAPI に URL を登録（以後の通信でこのURLが使われる）
+  CharkoAPI.setGasUrl(url);
   document.getElementById('gas-status').textContent='✅ 保存しました'+(url?'（URL設定済み）':'（URL未入力）');
   showToast('✅ Google連携設定を保存しました');
 }
@@ -1068,6 +1067,7 @@ async function generatePrepMemo(){
   el.innerHTML='<div class="summary-loading">🤖 受診メモを作成中...</div>';
   if(btn){btn.disabled=true;btn.textContent='作成中...';}
 
+  // 入力欄から値を取得
   const selectedClinic=document.getElementById('prep-clinic').value;
   const freeMemo=document.getElementById('prep-memo').value.trim();
 
@@ -1076,51 +1076,38 @@ async function generatePrepMemo(){
     .sort((a,b)=>b.date.localeCompare(a.date)).slice(0,3);
   const meds=LS.meds().filter(m=>m.active);
   
-  // trackerのキーは rec_YYYY-MM-DD、フィールドはscoreMorning/scoreNoon/scoreNight/symptoms/diary
   const trackerData=[];
   for(let i=13;i>=0;i--){
     const d=new Date();d.setDate(d.getDate()-i);
-    const dateStr=d.toISOString().slice(0,10);
-    const raw=localStorage.getItem(`rec_${dateStr}`);
-    if(raw){
-      try{
-        const rec=JSON.parse(raw);
-        const r=rec.data||rec; // 新旧データ構造どちらにも対応
-        const scores=`朝${r.scoreMorning||'-'}/昼${r.scoreNoon||'-'}/夜${r.scoreNight||'-'}`;
-        const syms=(r.symptoms||[]).length?` 症状:${r.symptoms.join('・')}` :'';
-        const diary=r.diary?` 日記:${String(r.diary).slice(0,60)}`:'';
-        trackerData.push(`${dateStr.slice(5)} 気分${scores}${syms}${diary}`);
-      }catch(e){/* パースエラーは無視 */}
+    const key=`tr_${d.toISOString().slice(0,10)}`;
+    const rec=localStorage.getItem(key);
+    if(rec){
+      const r=JSON.parse(rec);
+      trackerData.push(`${d.toISOString().slice(5,10)} 気分${r.mood||'-'}/10 睡眠${r.sleep||'-'}h${r.notes?' 📌'+r.notes:''}`);
     }
   }
 
-  const hasTracker=trackerData.length>0;
+  const prompt=`精神科受診の準備メモを作成してください。
 
-  const prompt=`あなたは精神科・心療内科の受診準備をサポートするアシスタントです。
-以下の実際のデータをもとに、次回受診で医師に伝えるべき内容を箇条書きでまとめてください。
-テンプレートや一般的なアドバイスは絶対に出力しないこと。データに基づいた具体的な内容だけ書くこと。
-${selectedClinic?`\n受診先：${selectedClinic}`:''}
-${freeMemo?`\n【本人が伝えたいこと】\n${freeMemo}`:''}
-
+${selectedClinic?`【受診先】${selectedClinic}\n`:''}${freeMemo?`【今回伝えたいこと（本人記入）】\n${freeMemo}\n`:''}
 【直近の受診記録】
-${visits.map(v=>`${v.date} ${v.clinic||''} 伝:${(v.told||'').slice(0,80)} 聞:${(v.heard||'').slice(0,80)}`).join('\n')||'なし'}
+${visits.map(v=>`${v.date}：伝えたこと「${(v.told||'').slice(0,100)}」言われたこと「${(v.heard||'').slice(0,100)}」`).join('\n')||'記録なし'}
 
 【現在の処方薬】
-${meds.map(m=>`${m.name} ${m.dose||''}`).join('、')||'なし'}
+${meds.map(m=>`${m.name} ${m.dose||''}`).join('、')||'情報なし'}
 
-【直近14日のトラッカーログ】
-${hasTracker?trackerData.join('\n'):'データなし（Trackerアプリと同じブラウザで開いていない可能性あり）'}
+【直近14日のトラッカーデータ】
+${trackerData.join('\n')||'データなし'}
 
-【出力ルール】
-・箇条書き4〜6行、1行は絵文字1つ＋具体的な文
-・前置き・まとめ・見出し不要
-・データがない項目は書かない
-・「記録してください」「確認してください」などの指示文は書かない`;
+【出力形式・必ず守ること】
+・全体を4〜6行の箇条書きにまとめること
+・1行は絵文字1つ＋40文字以内
+・前置き・まとめ・見出し・改行は不要
+・医師に伝えるべき事項を優先すること`;
 
   try{
     const text=await callAI(prompt,800);
-    // テキスト小さめ・改行対応・行間広め
-    el.innerHTML=`<div class="summary-card"><div style="font-size:11px;line-height:1.9;white-space:pre-wrap;color:var(--text)">${text}</div></div>`;
+    el.innerHTML=`<div class="summary-card"><div class="summary-text">${text.replace(/\n/g,'<br>')}</div></div>`;
   }catch(e){
     el.innerHTML=`<div style="font-size:11px;color:var(--a4)">取得に失敗しました：${e.message}</div>`;
   }finally{
@@ -1400,35 +1387,21 @@ function initMeds(){
   ];
 }
 
-// ── initAppMeta（ui.js が読めない環境用インライン版） ──
-// ui.js が読み込まれていれば上書きされる。どちらでも動作する。
-if(typeof initAppMeta==='undefined'){
-  window.initAppMeta=function({version,history=[]}){
-    const vEl=document.getElementById('app-version');
-    if(vEl) vEl.textContent='Charko Series '+version;
-    const hEl=document.getElementById('acc-versions');
-    if(hEl){
-      const rows=history.map((item,i)=>{
-        const color=i<2?'var(--a3)':'var(--t2)';
-        return`<b style="color:${color}">${item.v}</b>（${item.date}）${item.note}<br>`;
-      }).join('');
-      hEl.innerHTML=`<div style="font-size:10px;color:var(--t2);line-height:2">${rows}</div>`;
-    }
-  };
-}
-
 // ── 初期化 ──
 document.addEventListener('DOMContentLoaded',()=>{
+  // GAS URL を CharkoAPI に登録（LS.gas() は CharkoStorage 経由で読む）
+  const gasConfig=LS.gas();
+  if(gasConfig.url) CharkoAPI.setGasUrl(gasConfig.url);
+
   renderHome();
-  if(!localStorage.getItem('med_meds')) LS.saveMeds(initMeds());
+  if(!CharkoStorage.exists('med_meds')) LS.saveMeds(initMeds());
   updateAITexts();
 
   // ── バージョン情報（ui.js の initAppMeta で生成） ──
   // 他のアプリも同じ形式で呼ぶだけでヘッダーと設定タブに反映される
   initAppMeta({
-    version: 'v1.4',
+    version: 'v1.3',
     history: [
-      { v: 'v1.4', date: '2026/04/10', note: 'BUG修正: GAS通信フォーマット統一・initAppMetaインライン化・Trackerログ読込キー修正' },
       { v: 'v1.3', date: '2026/04/10', note: '受診準備を記録タブに統合・医療機関セレクト＋自由記述入力欄を追加' },
       { v: 'v1.2', date: '2026/04/10', note: 'AI分析をGASプロキシ方式に変更・Gemini出力を箇条書きに変更' },
       { v: 'v1.1', date: '2026/04/09', note: 'タブ構成整理・アコーディオン化・AI設定追加' },
