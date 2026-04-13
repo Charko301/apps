@@ -181,9 +181,11 @@ label {
   color: var(--accent);
 }
 
-.btn:disabled {
+.btn:disabled,
+.save-btn:disabled {
   opacity: 0.4;
   cursor: not-allowed;
+  pointer-events: none; /* クリック・ホバーを完全に無効化 */
 }
 
 .btn-primary {
@@ -321,7 +323,7 @@ label {
 .toast-box {
   background: var(--accent);
   color: #fff;
-  padding: 14px 26px;
+  padding: 12px 24px;
   border-radius: 12px;
   font-size: 14px;
   font-weight: 500;
@@ -330,6 +332,21 @@ label {
   transition: transform 0.3s;
   max-width: 85vw;
   text-align: center;
+}
+
+/* トーストのメインテキスト */
+.toast-main {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+/* トーストのサブテキスト（保存先シート名など） */
+.toast-sub {
+  font-size: 10px;
+  font-weight: 400;
+  opacity: 0.8;
+  margin-top: 3px;
+  letter-spacing: 0.04em;
 }
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -570,6 +587,239 @@ label {
 
 .w-full {
   width: 100%;
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   ヘッダー
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+   使い方（HTML）:
+   <header class="app-header">
+     <div class="app-header-series">Charko Series</div>
+     <div class="app-header-title">Tracker</div>
+     <div class="app-header-sub">Record</div>
+     <div class="app-header-ver" id="app-version">ver.1.0</div>
+   </header>
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
+.app-header {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 12px 14px 10px;
+  border-bottom: 1px solid var(--border);
+  background: var(--s1);
+  flex-shrink: 0;
+}
+
+.app-header-series {
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--t2);
+}
+
+.app-header-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: 0.02em;
+}
+
+.app-header-sub {
+  font-size: 10px;
+  color: var(--t2);
+  letter-spacing: 0.06em;
+}
+
+.app-header-ver {
+  font-size: 9px;
+  color: var(--t2);
+  margin-left: auto;
+  font-family: 'DM Mono', monospace;
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   タブナビゲーション（モバイル：横並び中央揃え）
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+   使い方（HTML）:
+   <nav class="tab-nav">
+     <button class="tab-btn active" data-tab="record">記録</button>
+     <button class="tab-btn" data-tab="history">履歴</button>
+     <button class="tab-btn" data-tab="analyze">分析</button>
+     <button class="tab-btn" data-tab="settings">設定</button>
+   </nav>
+   <div class="tab-content" id="tab-record">...</div>
+   <div class="tab-content" id="tab-history" style="display:none">...</div>
+
+   JS: initTabs() を呼ぶだけで動作（ui.js参照）
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
+.tab-nav {
+  display: flex;
+  justify-content: center;
+  gap: 2px;
+  padding: 8px 10px 0;
+  background: var(--s1);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.tab-btn {
+  padding: 7px 14px 8px;
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: none;
+  color: var(--t2);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color 0.15s, border-color 0.15s;
+  border-radius: var(--r2) var(--r2) 0 0;
+}
+
+.tab-btn:hover {
+  color: var(--accent);
+}
+
+.tab-btn.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+/* タブコンテンツ */
+.tab-content {
+  padding: 12px 14px;
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   PCレイアウト（768px以上：左縦サイドバー）
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+   使い方（HTML）:
+   <div class="app-layout">
+     <aside class="app-sidebar">
+       <div class="sidebar-header">
+         <div class="app-header-series">Charko Series</div>
+         <div class="app-header-title">Tracker</div>
+         <div class="app-header-sub">Record</div>
+         <div class="app-header-ver" id="app-version">ver.1.0</div>
+       </div>
+       <nav class="tab-nav">...</nav>
+     </aside>
+     <main class="app-main">
+       <header class="app-header">...</header>  ← モバイル時のみ表示
+       <div class="tab-content" ...>...</div>
+     </main>
+   </div>
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
+.app-layout {
+  display: flex;
+  min-height: 100vh;
+}
+
+/* サイドバー：モバイルでは非表示 */
+.app-sidebar {
+  display: none;
+}
+
+/* メインコンテンツ */
+.app-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+@media (min-width: 768px) {
+  /* サイドバー表示 */
+  .app-sidebar {
+    display: flex;
+    flex-direction: column;
+    width: 180px;
+    min-height: 100vh;
+    background: var(--s1);
+    border-right: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+    flex-shrink: 0;
+  }
+
+  .sidebar-header {
+    padding: 16px 14px 12px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .sidebar-header .app-header-series {
+    margin-bottom: 4px;
+  }
+
+  .sidebar-header .app-header-title {
+    font-size: 14px;
+    margin-bottom: 2px;
+  }
+
+  .sidebar-header .app-header-ver {
+    margin-left: 0;
+    margin-top: 6px;
+    display: block;
+  }
+
+  /* サイドバー内タブ：縦並び */
+  .app-sidebar .tab-nav {
+    flex-direction: column;
+    justify-content: flex-start;
+    padding: 8px 0;
+    border-bottom: none;
+    gap: 0;
+  }
+
+  .app-sidebar .tab-btn {
+    text-align: left;
+    padding: 10px 14px;
+    border-bottom: none;
+    border-left: 2px solid transparent;
+    border-radius: 0;
+    font-size: 12px;
+    width: 100%;
+  }
+
+  .app-sidebar .tab-btn.active {
+    border-bottom-color: transparent;
+    border-left-color: var(--accent);
+    background: var(--s2);
+    color: var(--accent);
+  }
+
+  /* モバイル用ヘッダー・タブをメインから隠す */
+  .app-main > .app-header,
+  .app-main > .tab-nav {
+    display: none;
+  }
+
+  .tab-content {
+    padding: 16px 20px;
+  }
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   アコーディオン横幅保証
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
+.acc,
+.acc-h,
+.acc-b {
+  width: 100%;
+  box-sizing: border-box;
 }
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
