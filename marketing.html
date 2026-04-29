@@ -21,7 +21,8 @@ body{background:var(--bg);color:var(--t);font-family:var(--sans);font-size:14px;
 ::-webkit-scrollbar-track{background:var(--bg2)}
 ::-webkit-scrollbar-thumb{background:var(--bg4);border-radius:2px}
 #nav{display:flex;align-items:center;gap:4px;padding:0 16px;height:48px;background:var(--bg2);border-bottom:1px solid var(--b);position:sticky;top:0;z-index:100}
-.nav-brand{font-family:var(--mono);font-size:13px;font-weight:700;color:var(--ac);letter-spacing:.2em;margin-right:12px}
+.nav-brand{font-family:var(--mono);font-size:12px;font-weight:700;color:var(--ac);letter-spacing:.05em;margin-right:12px;white-space:nowrap}
+#version-badge{position:fixed;bottom:8px;left:12px;font-family:var(--mono);font-size:10px;color:var(--t3);z-index:50;pointer-events:none}
 .nav-btn{padding:6px 12px;border-radius:6px;border:none;background:transparent;color:var(--t2);cursor:pointer;font-size:13px;font-family:var(--sans);transition:.15s}
 .nav-btn:hover{color:var(--t);background:var(--bg3)}
 .nav-btn.active{background:var(--bg4);color:var(--t)}
@@ -66,6 +67,16 @@ pre.post-text{white-space:pre-wrap;font-family:var(--sans);font-size:13px;line-h
 .info-box{background:var(--blue-t);border:1px solid #1a3a6a;border-radius:8px;padding:10px 14px;font-size:12px;color:var(--t2);line-height:1.6}
 .warn-box{background:#1a1005;border:1px solid #4a3010;border-radius:8px;padding:10px 14px;font-size:12px;color:#cc9955;line-height:1.6}
 .success-box{background:var(--green-t);border:1px solid #1a4a2a;border-radius:8px;padding:10px 14px;font-size:12px;color:#6aefaa;line-height:1.6}
+.ai-sns-btn{background:var(--bg3);border:1px solid var(--b2);color:var(--t3);transition:.15s}
+.ai-sns-btn[data-active="1"]{background:var(--ac2);border-color:var(--ac);color:var(--t)}
+.ai-result-card{background:var(--bg2);border:1px solid var(--b);border-radius:10px;overflow:hidden}
+.ai-result-card-hdr{padding:12px 14px;border-bottom:1px solid var(--b);display:flex;align-items:center;gap:8px}
+.ai-result-card-body{padding:14px;font-size:13px;color:var(--t2);line-height:1.8;white-space:pre-wrap}
+.ai-loading{display:flex;align-items:center;gap:10px;padding:20px;color:var(--t3);font-size:13px}
+.ai-loading-dot{width:6px;height:6px;border-radius:50%;background:var(--ac);animation:aiPulse 1.2s infinite}
+.ai-loading-dot:nth-child(2){animation-delay:.2s}
+.ai-loading-dot:nth-child(3){animation-delay:.4s}
+@keyframes aiPulse{0%,80%,100%{opacity:.2}40%{opacity:1}}
 .toast-ov{position:fixed;bottom:24px;right:24px;z-index:9999;pointer-events:none;opacity:0;transition:opacity .25s}
 .toast-ov.show{opacity:1}
 .toast-box{background:var(--bg4);border:1px solid var(--b2);border-radius:10px;padding:10px 18px;min-width:160px;max-width:320px;transform:scale(0.8);transition:transform .2s}
@@ -127,7 +138,7 @@ video{width:100%;height:100%;object-fit:contain}
 </head>
 <body>
 <nav id="nav">
-  <span class="nav-brand">CHARKO</span>
+  <span class="nav-brand">SNS Marketing</span>
   <button class="nav-btn active" onclick="showPage('home')">&#x30DB;&#x30FC;&#x30E0;</button>
   <button class="nav-btn" onclick="showPage('generate')">&#x751F;&#x6210;</button>
   <button class="nav-btn" onclick="showPage('dashboard')">&#x7BA1;&#x7406;</button>
@@ -213,9 +224,38 @@ video{width:100%;height:100%;object-fit:contain}
   <div id="ab-section" style="margin-top:16px"></div>
 </div>
 <div id="page-video" class="page">
-  <div class="sub">&#x52D5;&#x753B;&#x30A8;&#x30C7;&#x30A3;&#x30BF;&#x30FC;</div>
-  <h2 style="margin-bottom:4px">&#x5207;&#x308A;&#x51FA;&#x3057;&#x6307;&#x793A;&#x66F8; + &#x30D7;&#x30EC;&#x30D3;&#x30E5;&#x30FC;</h2>
-  <p style="color:var(--t2);font-size:13px;margin-bottom:16px">&#x52D5;&#x753B;&#x3092;&#x30A2;&#x30C3;&#x30D7;&#x30ED;&#x30FC;&#x30C9;&#x3057;&#x3066;&#x300C;&#x3069;&#x3053;&#x3092;&#x5207;&#x308B;&#x304B;&#x300D;&#x3092;&#x6C7A;&#x3081;&#x3001;CapCut&#x3078;&#x306E;&#x6307;&#x793A;&#x66F8;&#x3092;&#x751F;&#x6210;&#x3057;&#x307E;&#x3059;&#x3002;</p>
+  <div class="sub">動画エディター</div>
+  <h2 style="margin-bottom:12px">切り出し指示書 + AIアドバイス</h2>
+  <div style="display:flex;gap:2px;background:var(--bg3);border:1px solid var(--b);border-radius:8px;padding:3px;width:fit-content;margin-bottom:16px">
+    <button class="btn btn-sm" id="vid-tab-cut" style="background:var(--bg4);color:var(--t)" onclick="switchVidTab('cut')">✂ 切り出し</button>
+    <button class="btn btn-sm" id="vid-tab-ai" style="color:var(--t3)" onclick="switchVidTab('ai')">✦ AIアドバイス</button>
+  </div>
+  <div id="vid-panel-ai" style="display:none">
+    <div style="max-width:720px;display:flex;flex-direction:column;gap:14px">
+      <div class="info-box">楽曲の歌詞を貼り付けると、Geminiが<strong>フレーズ分析・字幕タイミング・TikTok/Reels向け編集アドバイス</strong>を一括出力します。</div>
+      <div class="card" style="padding:14px">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+          <div><label class="label">曲名</label><input type="text" id="ai-song-name" placeholder="例: Overdose"></div>
+          <div><label class="label">曲のジャンル・雰囲気（任意）</label><input type="text" id="ai-genre" placeholder="例: ダークポップ、孤独系、深夜"></div>
+        </div>
+        <div style="margin-bottom:12px">
+          <label class="label">歌詞（全文または一部）</label>
+          <textarea id="ai-lyrics" rows="8" placeholder="ここに歌詞を貼り付けてください..."></textarea>
+        </div>
+        <div style="margin-bottom:12px">
+          <label class="label">ターゲットSNS</label>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <button class="btn btn-sm ai-sns-btn" data-active="1" onclick="toggleSnsBtn(this)">TikTok</button>
+            <button class="btn btn-sm ai-sns-btn" data-active="1" onclick="toggleSnsBtn(this)">Instagram Reels</button>
+            <button class="btn btn-sm ai-sns-btn" data-active="0" onclick="toggleSnsBtn(this)">YouTube Shorts</button>
+          </div>
+        </div>
+        <button class="btn btn-primary" id="ai-analyze-btn" onclick="runAiAnalysis()" style="width:100%;justify-content:center;padding:11px;font-size:14px">✦ AIで分析する</button>
+      </div>
+      <div id="ai-result-wrap" style="display:none;flex-direction:column;gap:12px"></div>
+    </div>
+  </div>
+  <div id="vid-panel-cut">
   <div id="vid-wrap">
     <div style="display:flex;flex-direction:column;gap:12px">
       <div class="card" style="padding:14px">
@@ -285,11 +325,21 @@ video{width:100%;height:100%;object-fit:contain}
       </div>
     </div>
   </div>
+  </div><!-- /vid-panel-cut -->
 </div>
 <div id="page-settings" class="page">
   <div class="sub">&#x8A2D;&#x5B9A;</div>
   <h2 style="margin-bottom:16px">Google &#x30B9;&#x30D7;&#x30EC;&#x30C3;&#x30C9;&#x30B7;&#x30FC;&#x30C8;&#x9023;&#x643A;</h2>
   <div style="max-width:600px;display:flex;flex-direction:column;gap:16px">
+    <div class="card" style="padding:16px">
+      <div class="label" style="margin-bottom:8px">Gemini API キー</div>
+      <p style="font-size:13px;color:var(--t2);line-height:1.6;margin-bottom:10px">AIアドバイス機能に使用します。キーはブラウザのローカルストレージにのみ保存され、外部に送信されません。</p>
+      <div style="display:flex;gap:8px">
+        <input type="password" id="claude-key-input" placeholder="AIza..." style="flex:1;font-family:var(--mono);font-size:12px">
+        <button class="btn btn-primary" onclick="saveClaudeKey()">保存</button>
+      </div>
+      <div id="claude-key-status" style="margin-top:8px"></div>
+    </div>
     <div class="card" style="padding:16px">
       <div class="label" style="margin-bottom:8px">GAS &#x30C7;&#x30D7;&#x30ED;&#x30A4; URL</div>
       <p style="font-size:13px;color:var(--t2);line-height:1.6;margin-bottom:10px">Marketing&#x5C02;&#x7528;GAS&#x30D7;&#x30ED;&#x30B8;&#x30A7;&#x30AF;&#x30C8;&#x306E;URL&#x3092;&#x5165;&#x529B;&#x3057;&#x3066;&#x304F;&#x3060;&#x3055;&#x3044;&#x3002;<br>&#x30B9;&#x30D7;&#x30B7;ID: <span style="font-family:var(--mono);font-size:11px;color:var(--t)">1aw4DxtiHUYz4Zl8sL2DdLu7B1fY-75kfteC7fhFtD6I</span></p>
@@ -309,6 +359,7 @@ video{width:100%;height:100%;object-fit:contain}
 </div>
 </div>
 <div class="toast-ov" id="toast-ov"><div class="toast-box"><div class="toast-main" id="toast-main"></div><div class="toast-sub" id="toast-sub" style="display:none"></div></div></div>
+<div id="version-badge"></div>
 <script>
 'use strict';
 const APP_VER='v1.0.0';
@@ -380,7 +431,9 @@ function showToast(msg,type='info',duration=2500,sub=''){
 function showPage(name){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
-  document.getElementById('page-'+name).classList.add('active');
+  const pageEl=document.getElementById('page-'+name);
+  if(!pageEl)return;
+  pageEl.classList.add('active');
   const nb=document.querySelectorAll('.nav-btn');
   const idx={home:0,generate:1,dashboard:2,analytics:3,video:4};
   if(idx[name]!==undefined)nb[idx[name]].classList.add('active');else nb[5]?.classList.add('active');
@@ -529,13 +582,25 @@ function renderInstructionSheet(){
   const el=document.getElementById('instruction-content');if(!el)return;
   const hook=document.getElementById('hook-overlay')?.value||'';const effect=document.getElementById('clip-effect')?.value||'fade';const textDur=parseFloat(document.getElementById('text-duration')?.value||'3');
   const ed={fade:'\u30d5\u30a7\u30fc\u30c9\u30a4\u30f3(0.5\u79d2)\u2192\u9759\u6b62\u2192\u30d5\u30a7\u30fc\u30c9\u30a2\u30a6\u30c8(0.5\u79d2)',none:'\u30a8\u30d5\u30a7\u30af\u30c8\u306a\u3057','fade-in':'\u30d5\u30a7\u30fc\u30c9\u30a4\u30f3\u306e\u307f(0.5\u79d2)'};
-  el.innerHTML=`<div class="instruction-row" style="background:var(--bg4)"><span class="inst-day" style="color:var(--ac);font-weight:700">\u57fa\u672c\u60c5\u5831</span><span></span><span></span></div><div class="instruction-row"><span class="inst-day">\u5207\u308a\u51fa\u3057</span><span class="inst-hook">\u958b\u59cb ${fmtTime(clipStart)}\uff08${clipStart.toFixed(1)}\u79d2\uff09\u2192 \u7d42\u4e86 ${fmtTime(clipEnd)}\uff08${clipEnd.toFixed(1)}\u79d2\uff09</span><span class="inst-time">${Math.round(clipEnd-clipStart)}\u79d2</span></div><div class="instruction-row"><span class="inst-day">\u30d5\u30c3\u30af\u6587</span><span class="inst-hook" style="white-space:normal;font-weight:600;color:var(--t)">${escHtml(hook||'\uff08\u672a\u5165\u529b\uff09')}</span><span></span></div><div class="instruction-row"><span class="inst-day">\u30c6\u30ad\u30b9\u30c8</span><span class="inst-hook">\u8868\u793a\u6642\u9593: 0\u79d2\u301c${textDur}\u79d2</span><span></span></div><div class="instruction-row"><span class="inst-day">\u30a8\u30d5\u30a7\u30af\u30c8</span><span class="inst-hook">${ed[effect]||''}</span><span></span></div><div class="instruction-row"><span class="inst-day">\u51fa\u529b</span><span class="inst-hook">\u종\u578b 9:16 / 1080\u00d71920 / MP4 / 30fps</span><span></span></div><div class="instruction-row" style="background:var(--bg4)"><span class="inst-day" style="color:var(--ac);font-weight:700">CapCut\u624b\u9806</span><span></span><span></span></div><div class="instruction-row"><span class="inst-day" style="color:var(--t3)">Step 1</span><span class="inst-hook">\u52d5\u753b\u3092\u65b0\u898f\u30d7\u30ed\u30b8\u30a7\u30af\u30c8\u306b\u8ffd\u52a0</span><span></span></div><div class="instruction-row"><span class="inst-day" style="color:var(--t3)">Step 2</span><span class="inst-hook">\u958b\u59cb\u70b9\u3092 ${clipStart.toFixed(1)}\u79d2 \u306b\u30c8\u30ea\u30df\u30f3\u30b0</span><span class="inst-time">${fmtTime(clipStart)}</span></div><div class="instruction-row"><span class="inst-day" style="color:var(--t3)">Step 3</span><span class="inst-hook">\u7d42\u4e86\u70b9\u3092 ${clipEnd.toFixed(1)}\u79d2 \u306b\u30c8\u30ea\u30df\u30f3\u30b0</span><span class="inst-time">${fmtTime(clipEnd)}</span></div><div class="instruction-row"><span class="inst-day" style="color:var(--t3)">Step 4</span><span class="inst-hook">\u30c6\u30ad\u30b9\u30c8\u8ffd\u52a0: "${escHtml(hook||'\u30d5\u30c3\u30af\u6587')}"</span><span></span></div><div class="instruction-row"><span class="inst-day" style="color:var(--t3)">Step 5</span><span class="inst-hook">\u30c6\u30ad\u30b9\u30c8: 0\u301c${textDur}\u79d2 / \u767d / \u4e2d\u592e / \u7d30\u30b4\u30b7\u30c3\u30af</span><span></span></div><div class="instruction-row"><span class="inst-day" style="color:var(--t3)">Step 6</span><span class="inst-hook">${effect!=='none'?'\u30d5\u30a7\u30fc\u30c9\u30a4\u30f3\u30fb\u30a2\u30a6\u30c8\u3092\u8ffd\u52a0':'\u30a8\u30d5\u30a7\u30af\u30c8\u306a\u3057'}</span><span></span></div><div class="instruction-row"><span class="inst-day" style="color:var(--t3)">Step 7</span><span class="inst-hook">\u66f8\u304d\u51fa\u3057: 1080p / \u7e26\u578b 9:16 / MP4</span><span></span></div>`;
+  el.innerHTML=`<div class="instruction-row" style="background:var(--bg4)"><span class="inst-day" style="color:var(--ac);font-weight:700">\u57fa\u672c\u60c5\u5831</span><span></span><span></span></div><div class="instruction-row"><span class="inst-day">\u5207\u308a\u51fa\u3057</span><span class="inst-hook">\u958b\u59cb ${fmtTime(clipStart)}\uff08${clipStart.toFixed(1)}\u79d2\uff09\u2192 \u7d42\u4e86 ${fmtTime(clipEnd)}\uff08${clipEnd.toFixed(1)}\u79d2\uff09</span><span class="inst-time">${Math.round(clipEnd-clipStart)}\u79d2</span></div><div class="instruction-row"><span class="inst-day">\u30d5\u30c3\u30af\u6587</span><span class="inst-hook" style="white-space:normal;font-weight:600;color:var(--t)">${escHtml(hook||'\uff08\u672a\u5165\u529b\uff09')}</span><span></span></div><div class="instruction-row"><span class="inst-day">\u30c6\u30ad\u30b9\u30c8</span><span class="inst-hook">\u8868\u793a\u6642\u9593: 0\u79d2\u301c${textDur}\u79d2</span><span></span></div><div class="instruction-row"><span class="inst-day">\u30a8\u30d5\u30a7\u30af\u30c8</span><span class="inst-hook">${ed[effect]||''}</span><span></span></div><div class="instruction-row"><span class="inst-day">\u51fa\u529b</span><span class="inst-hook">\u7e26\u578b 9:16 / 1080\u00d71920 / MP4 / 30fps</span><span></span></div><div class="instruction-row" style="background:var(--bg4)"><span class="inst-day" style="color:var(--ac);font-weight:700">CapCut\u624b\u9806</span><span></span><span></span></div><div class="instruction-row"><span class="inst-day" style="color:var(--t3)">Step 1</span><span class="inst-hook">\u52d5\u753b\u3092\u65b0\u898f\u30d7\u30ed\u30b8\u30a7\u30af\u30c8\u306b\u8ffd\u52a0</span><span></span></div><div class="instruction-row"><span class="inst-day" style="color:var(--t3)">Step 2</span><span class="inst-hook">\u958b\u59cb\u70b9\u3092 ${clipStart.toFixed(1)}\u79d2 \u306b\u30c8\u30ea\u30df\u30f3\u30b0</span><span class="inst-time">${fmtTime(clipStart)}</span></div><div class="instruction-row"><span class="inst-day" style="color:var(--t3)">Step 3</span><span class="inst-hook">\u7d42\u4e86\u70b9\u3092 ${clipEnd.toFixed(1)}\u79d2 \u306b\u30c8\u30ea\u30df\u30f3\u30b0</span><span class="inst-time">${fmtTime(clipEnd)}</span></div><div class="instruction-row"><span class="inst-day" style="color:var(--t3)">Step 4</span><span class="inst-hook">\u30c6\u30ad\u30b9\u30c8\u8ffd\u52a0: "${escHtml(hook||'\u30d5\u30c3\u30af\u6587')}"</span><span></span></div><div class="instruction-row"><span class="inst-day" style="color:var(--t3)">Step 5</span><span class="inst-hook">\u30c6\u30ad\u30b9\u30c8: 0\u301c${textDur}\u79d2 / \u767d / \u4e2d\u592e / \u7d30\u30b4\u30b7\u30c3\u30af</span><span></span></div><div class="instruction-row"><span class="inst-day" style="color:var(--t3)">Step 6</span><span class="inst-hook">${effect!=='none'?'\u30d5\u30a7\u30fc\u30c9\u30a4\u30f3\u30fb\u30a2\u30a6\u30c8\u3092\u8ffd\u52a0':'\u30a8\u30d5\u30a7\u30af\u30c8\u306a\u3057'}</span><span></span></div><div class="instruction-row"><span class="inst-day" style="color:var(--t3)">Step 7</span><span class="inst-hook">\u66f8\u304d\u51fa\u3057: 1080p / \u7e26\u578b 9:16 / MP4</span><span></span></div>`;
 }
 function copyInstructions(){const hook=document.getElementById('hook-overlay')?.value||'';const effect=document.getElementById('clip-effect')?.value||'fade';const textDur=document.getElementById('text-duration')?.value||'3';const txt=`=== CapCut \u5207\u308a\u51fa\u3057\u6307\u793a\u66f8 ===\n\n\u958b\u59cb: ${clipStart.toFixed(1)}\u79d2 (${fmtTime(clipStart)})\n\u7d42\u4e86: ${clipEnd.toFixed(1)}\u79d2 (${fmtTime(clipEnd)})\n\u9577\u3055: ${Math.round(clipEnd-clipStart)}\u79d2\n\n\u30d5\u30c3\u30af\u30c6\u30ad\u30b9\u30c8:\n${hook||'\uff08\u672a\u5165\u529b\uff09'}\n\n\u30c6\u30ad\u30b9\u30c8: 0\u301c${textDur}\u79d2 / \u767d / \u4e2d\u592e\n\u30a8\u30d5\u30a7\u30af\u30c8: ${effect==='fade'?'\u30d5\u30a7\u30fc\u30c9\u30a4\u30f3+\u30a2\u30a6\u30c8':effect==='fade-in'?'\u30d5\u30a7\u30fc\u30c9\u30a4\u30f3\u306e\u307f':'\u306a\u3057'}`;navigator.clipboard.writeText(txt).then(()=>showToast('\u6307\u793a\u66f8\u3092\u30b3\u30d4\u30fc\u3057\u307e\u3057\u305f','success'));}
 function downloadInstructions(){const hook=document.getElementById('hook-overlay')?.value||'';const blob=new Blob([`CapCut\u5207\u308a\u51fa\u3057\u6307\u793a\u66f8\n\n\u958b\u59cb: ${clipStart.toFixed(1)}\u79d2\n\u7d42\u4e86: ${clipEnd.toFixed(1)}\u79d2\n\u9577\u3055: ${Math.round(clipEnd-clipStart)}\u79d2\n\n\u30d5\u30c3\u30af\u30c6\u30ad\u30b9\u30c8:\n${hook||'\uff08\u672a\u5165\u529b\uff09'}`],{type:'text/plain;charset=utf-8'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='capcut_instructions.txt';a.click();}
+function saveClaudeKey(){
+  const k=document.getElementById('claude-key-input').value.trim();
+  if(!k){showToast('APIキーを入力してください','error');return;}
+  if(!k.startsWith('AIza')){showToast('Gemini APIキーは AIza から始まります','error');return;}
+  Storage.save(SK_CLAUDE_KEY,k);
+  document.getElementById('claude-key-status').innerHTML='<div class="success-box">Gemini APIキーを保存しました</div>';
+  document.getElementById('claude-key-input').value='';
+  showToast('Gemini APIキーを保存しました','success');
+}
 function renderSettings(){
   const url=loadGasUrl();const inp=document.getElementById('gas-url-input');if(inp)inp.value=url;
   const el=document.getElementById('settings-status');if(!el)return;
+  const ck=loadClaudeKey();
+  const ckEl=document.getElementById('claude-key-status');
+  if(ckEl)ckEl.innerHTML=ck?'<div class="success-box">APIキー設定済み ✓</div>':'<div style="color:var(--t3);font-size:13px">APIキーが未設定です</div>';
   el.innerHTML=url?`<div class="label" style="margin-bottom:6px">\u73fe\u5728\u306e\u8a2d\u5b9a</div><div style="font-size:13px;color:var(--t2)">GAS URL: <span style="font-family:var(--mono);font-size:11px;color:var(--t)">${escHtml(url.slice(0,60)+'...')}</span></div><div style="font-size:12px;color:var(--t3);margin-top:4px">\u30b9\u30d7\u30b7 ID: 1aw4DxtiHUYz4Zl8sL2DdLu7B1fY-75kfteC7fhFtD6I</div>`:'<div style="color:var(--t3);font-size:13px">GAS URL\u304c\u672a\u8a2d\u5b9a\u3067\u3059</div>';
 }
 function saveGasUrl(){
@@ -552,7 +617,118 @@ async function testConnection(){
   if(result.success){el.innerHTML=`<div class="success-box">\u63a5\u7d9a\u6210\u529f \u2014 \u30b7\u30fc\u30c8: ${escHtml(result.data?.sheetName||'')}</div>`;showToast('\u63a5\u7d9a\u6210\u529f','success');}
   else{el.innerHTML=`<div class="warn-box">\u63a5\u7d9a\u5931\u6557: ${escHtml(result.error_message)}</div>`;showToast('\u63a5\u7d9a\u5931\u6557','error');}
 }
-(function(){const url=loadGasUrl();if(url)setGasUrl(url);renderHomeStatus();console.log('[Charko Marketing] \u521d\u671f\u5316\u5b8c\u4e86 '+APP_VER);})();
+// ===== AI ADVICE =====
+const SK_CLAUDE_KEY = 'charko_claude_key';
+function loadClaudeKey(){return Storage.load(SK_CLAUDE_KEY,'');}
+function switchVidTab(tab){
+  const panelCut=document.getElementById('vid-panel-cut');
+  const panelAi=document.getElementById('vid-panel-ai');
+  const btnCut=document.getElementById('vid-tab-cut');
+  const btnAi=document.getElementById('vid-tab-ai');
+  if(tab==='cut'){
+    panelCut.style.display='';panelAi.style.display='none';
+    btnCut.style.cssText='background:var(--bg4);color:var(--t)';
+    btnAi.style.cssText='color:var(--t3)';
+  } else {
+    panelCut.style.display='none';panelAi.style.display='block';
+    btnAi.style.cssText='background:var(--bg4);color:var(--t)';
+    btnCut.style.cssText='color:var(--t3)';
+  }
+}
+function toggleSnsBtn(btn){
+  const active=btn.getAttribute('data-active')==='1';
+  btn.setAttribute('data-active', active?'0':'1');
+}
+async function runAiAnalysis(){
+  const song=document.getElementById('ai-song-name').value.trim();
+  const genre=document.getElementById('ai-genre').value.trim();
+  const lyrics=document.getElementById('ai-lyrics').value.trim();
+  if(!lyrics){showToast('歌詞を入力してください','error');return;}
+
+  const snsBtns=[...document.querySelectorAll('.ai-sns-btn')];
+  const selectedSns=snsBtns.filter(b=>b.getAttribute('data-active')==='1').map(b=>b.textContent.trim());
+  if(selectedSns.length===0){showToast('SNSを1つ以上選択してください','error');return;}
+
+  const wrap=document.getElementById('ai-result-wrap');
+  wrap.style.display='flex';
+  wrap.innerHTML=`<div class="ai-loading"><div class="ai-loading-dot"></div><div class="ai-loading-dot"></div><div class="ai-loading-dot"></div><span>Geminiが分析中...</span></div>`;
+
+  const btn=document.getElementById('ai-analyze-btn');
+  btn.disabled=true;btn.textContent='分析中...';
+
+  const prompt=`あなたはSNS音楽マーケティングの専門家です。
+以下の楽曲について、SNSで最大限バズるための動画編集・字幕戦略を具体的に教えてください。
+
+【曲名】${song||'（未入力）'}
+【ジャンル・雰囲気】${genre||'（未入力）'}
+【ターゲットSNS】${selectedSns.join('、')}
+【歌詞】
+${lyrics}
+
+以下の3つの観点で分析してください：
+
+## 1. フックになるフレーズ TOP5
+リスナーが「なんだこれ」と止まる可能性が高いフレーズを5つ選び、なぜ刺さるかを1〜2文で説明してください。
+
+## 2. 字幕タイミング戦略
+歌詞のどの部分をいつ字幕として出すか、具体的な秒数目安と字幕テキストの出し方（フォント感・タイミング・行数など）をアドバイスしてください。
+
+## 3. 動画編集アドバイス（${selectedSns.join('・')}向け）
+- 動画の冒頭0〜3秒の構成
+- カット編集・エフェクトの使い方
+- 視聴維持率を上げる具体的なテクニック
+- この曲の世界観に合う映像素材・色調
+
+日本語で、実践的かつ具体的に答えてください。`;
+
+  try {
+  const apiKey=loadClaudeKey();
+  if(!apiKey){showToast('設定画面でGemini APIキーを登録してください','error');wrap.innerHTML='<div class="warn-box">⚙ 設定画面でGemini APIキーを登録してください</div>';btn.disabled=false;btn.textContent='✦ AIで分析する';return;}
+    const res=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        system_instruction:{parts:[{text:'あなたはSNS音楽マーケティングの専門家です。TikTok・Instagram Reels・YouTube Shortsのアルゴリズムと視聴者心理に精通しています。'}]},
+        contents:[{role:'user',parts:[{text:prompt}]}],
+        generationConfig:{maxOutputTokens:2000}
+      })
+    });
+    const data=await res.json();
+    if(data.error){throw new Error(data.error.message||JSON.stringify(data.error));}
+    const text=data.candidates?.[0]?.content?.parts?.[0]?.text||'';
+    renderAiResult(text, song, selectedSns);
+  } catch(e){
+    wrap.innerHTML=`<div class="warn-box">エラーが発生しました: ${escHtml(e.message)}</div>`;
+  } finally {
+    btn.disabled=false;btn.textContent='✦ AIで分析する';
+  }
+}
+function renderAiResult(text, song, sns){
+  const wrap=document.getElementById('ai-result-wrap');
+  // Split into sections
+  const sections=text.split(/^##\s+/m).filter(Boolean);
+  let html='';
+  const icons=['🎯','⏱','🎬'];
+  sections.forEach((sec,i)=>{
+    const lines=sec.split('\n');
+    const title=lines[0].trim();
+    const body=lines.slice(1).join('\n').trim();
+    html+=`<div class="ai-result-card">
+      <div class="ai-result-card-hdr">
+        <span style="font-size:18px">${icons[i]||'✦'}</span>
+        <span style="font-weight:700;font-size:14px;color:var(--t)">${escHtml(title)}</span>
+        <button onclick="navigator.clipboard.writeText(${JSON.stringify(body)}).then(()=>showToast('コピーしました','success'))" class="btn btn-ghost btn-sm" style="margin-left:auto">コピー</button>
+      </div>
+      <div class="ai-result-card-body">${escHtml(body)}</div>
+    </div>`;
+  });
+  if(!sections.length){
+    html=`<div class="ai-result-card"><div class="ai-result-card-hdr"><span style="font-weight:700;font-size:14px;color:var(--t)">分析結果</span><button onclick="navigator.clipboard.writeText(${JSON.stringify(text)}).then(()=>showToast('コピーしました','success'))" class="btn btn-ghost btn-sm" style="margin-left:auto">全文コピー</button></div><div class="ai-result-card-body">${escHtml(text)}</div></div>`;
+  }
+  wrap.innerHTML=html;
+}
+
+(function(){const url=loadGasUrl();if(url)setGasUrl(url);renderHomeStatus();const vb=document.getElementById('version-badge');if(vb)vb.textContent=APP_VER;console.log('[SNS Marketing] 初期化完了 '+APP_VER);})();
 </script>
 </body>
 </html>
