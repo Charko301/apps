@@ -232,7 +232,7 @@ video{width:100%;height:100%;object-fit:contain}
   </div>
   <div id="vid-panel-ai" style="display:none">
     <div style="max-width:720px;display:flex;flex-direction:column;gap:14px">
-      <div class="info-box">楽曲の歌詞を貼り付けると、Geminiが<strong>フレーズ分析・字幕タイミング・TikTok/Reels向け編集アドバイス</strong>を一括出力します。</div>
+      <div class="info-box">楽曲の歌詞を貼り付けると、Groq (Llama 3.3) が<strong>フレーズ分析・字幕タイミング・TikTok/Reels向け編集アドバイス</strong>を一括出力します。</div>
       <div class="card" style="padding:14px">
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
           <div><label class="label">曲名</label><input type="text" id="ai-song-name" placeholder="例: Overdose"></div>
@@ -332,10 +332,10 @@ video{width:100%;height:100%;object-fit:contain}
   <h2 style="margin-bottom:16px">Google &#x30B9;&#x30D7;&#x30EC;&#x30C3;&#x30C9;&#x30B7;&#x30FC;&#x30C8;&#x9023;&#x643A;</h2>
   <div style="max-width:600px;display:flex;flex-direction:column;gap:16px">
     <div class="card" style="padding:16px">
-      <div class="label" style="margin-bottom:8px">Gemini API キー</div>
-      <p style="font-size:13px;color:var(--t2);line-height:1.6;margin-bottom:10px">AIアドバイス機能に使用します。キーはブラウザのローカルストレージにのみ保存され、外部に送信されません。</p>
+      <div class="label" style="margin-bottom:8px">Groq API キー</div>
+      <p style="font-size:13px;color:var(--t2);line-height:1.6;margin-bottom:10px">AIアドバイス機能に使用します（無料）。<a href="https://console.groq.com/keys" target="_blank" style="color:var(--ac)">console.groq.com</a> で取得できます。キーはローカルストレージにのみ保存されます。</p>
       <div style="display:flex;gap:8px">
-        <input type="password" id="claude-key-input" placeholder="AIza..." style="flex:1;font-family:var(--mono);font-size:12px">
+        <input type="password" id="claude-key-input" placeholder="gsk_..." style="flex:1;font-family:var(--mono);font-size:12px">
         <button class="btn btn-primary" onclick="saveClaudeKey()">保存</button>
       </div>
       <div id="claude-key-status" style="margin-top:8px"></div>
@@ -589,11 +589,11 @@ function downloadInstructions(){const hook=document.getElementById('hook-overlay
 function saveClaudeKey(){
   const k=document.getElementById('claude-key-input').value.trim();
   if(!k){showToast('APIキーを入力してください','error');return;}
-  if(!k.startsWith('AIza')){showToast('Gemini APIキーは AIza から始まります','error');return;}
+  if(!k.startsWith('gsk_')){showToast('Groq APIキーは gsk_ から始まります','error');return;}
   Storage.save(SK_CLAUDE_KEY,k);
-  document.getElementById('claude-key-status').innerHTML='<div class="success-box">Gemini APIキーを保存しました</div>';
+  document.getElementById('claude-key-status').innerHTML='<div class="success-box">Groq APIキーを保存しました</div>';
   document.getElementById('claude-key-input').value='';
-  showToast('Gemini APIキーを保存しました','success');
+  showToast('Groq APIキーを保存しました','success');
 }
 function renderSettings(){
   const url=loadGasUrl();const inp=document.getElementById('gas-url-input');if(inp)inp.value=url;
@@ -651,7 +651,7 @@ async function runAiAnalysis(){
 
   const wrap=document.getElementById('ai-result-wrap');
   wrap.style.display='flex';
-  wrap.innerHTML=`<div class="ai-loading"><div class="ai-loading-dot"></div><div class="ai-loading-dot"></div><div class="ai-loading-dot"></div><span>Geminiが分析中...</span></div>`;
+  wrap.innerHTML=`<div class="ai-loading"><div class="ai-loading-dot"></div><div class="ai-loading-dot"></div><div class="ai-loading-dot"></div><span>Groqが分析中...</span></div>`;
 
   const btn=document.getElementById('ai-analyze-btn');
   btn.disabled=true;btn.textContent='分析中...';
@@ -683,19 +683,22 @@ ${lyrics}
 
   try {
   const apiKey=loadClaudeKey();
-  if(!apiKey){showToast('設定画面でGemini APIキーを登録してください','error');wrap.innerHTML='<div class="warn-box">⚙ 設定画面でGemini APIキーを登録してください</div>';btn.disabled=false;btn.textContent='✦ AIで分析する';return;}
-    const res=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,{
+  if(!apiKey){showToast('設定画面でGroq APIキーを登録してください','error');wrap.innerHTML='<div class="warn-box">⚙ 設定画面でGroq APIキーを登録してください</div>';btn.disabled=false;btn.textContent='✦ AIで分析する';return;}
+    const res=await fetch('https://api.groq.com/openai/v1/chat/completions',{
       method:'POST',
-      headers:{'Content-Type':'application/json'},
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+apiKey},
       body:JSON.stringify({
-        system_instruction:{parts:[{text:'あなたはSNS音楽マーケティングの専門家です。TikTok・Instagram Reels・YouTube Shortsのアルゴリズムと視聴者心理に精通しています。'}]},
-        contents:[{role:'user',parts:[{text:prompt}]}],
-        generationConfig:{maxOutputTokens:2000}
+        model:'llama-3.3-70b-versatile',
+        max_tokens:2000,
+        messages:[
+          {role:'system',content:'あなたはSNS音楽マーケティングの専門家です。TikTok・Instagram Reels・YouTube Shortsのアルゴリズムと視聴者心理に精通しています。'},
+          {role:'user',content:prompt}
+        ]
       })
     });
     const data=await res.json();
     if(data.error){throw new Error(data.error.message||JSON.stringify(data.error));}
-    const text=data.candidates?.[0]?.content?.parts?.[0]?.text||'';
+    const text=data.choices?.[0]?.message?.content||'';
     renderAiResult(text, song, selectedSns);
   } catch(e){
     wrap.innerHTML=`<div class="warn-box">エラーが発生しました: ${escHtml(e.message)}</div>`;
